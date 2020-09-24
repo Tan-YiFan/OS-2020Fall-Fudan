@@ -33,8 +33,8 @@ qemu-gdb: hello.img
 	qemu-system-aarch64 -M raspi3 -kernel $< -gdb tcp::1234 -nographic -S
 
 gdb:
-	# gdb-multiarch -n -x .gdbinit
-	aarch64-linux-gdb -x .gdbinit
+	gdb-multiarch -n -x .gdbinit
+	# aarch64-linux-gdb -x .gdbinit
 
 clean:
 	$(RM) hello.img hello.elf $(OBJ)
