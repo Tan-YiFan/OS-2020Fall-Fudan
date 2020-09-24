@@ -32,10 +32,10 @@ printint(int64_t x, int base, int sign)
 }
 
 void
-vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
+vprintfmt(void (*putch)(int), const char* fmt, va_list ap)
 {
     int i, c;
-    char *s;
+    char* s;
     for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
         if (c != '%') {
             putch(c);
@@ -43,7 +43,7 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
         }
 
         int l = 0;
-        for (; fmt[i+1] == 'l'; i++)
+        for (; fmt[i + 1] == 'l'; i++)
             l++;
 
         if (!(c = fmt[++i] & 0xff))
@@ -60,16 +60,16 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
             break;
         case 'x':
             if (l == 2) printint(va_arg(ap, int64_t), 16, 0);
-            else printint(va_arg(ap, uint32_t), 16, 0);
+            else printint(va_arg(ap, int), 16, 0);
             break;
         case 'p':
-            printint((uint64_t)va_arg(ap, void *), 16, 0);
+            printint((uint64_t)va_arg(ap, void*), 16, 0);
             break;
         case 'c':
             putch(va_arg(ap, int));
             break;
         case 's':
-            if ((s = (char*)va_arg(ap, char *)) == 0)
+            if ((s = (char*)va_arg(ap, char*)) == 0)
                 s = "(null)";
             for (; *s; s++)
                 putch(*s);
@@ -88,7 +88,7 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
 
 /* Print to the console. */
 void
-cprintf(const char *fmt, ...)
+cprintf(const char* fmt, ...)
 {
     va_list ap;
 
@@ -98,7 +98,7 @@ cprintf(const char *fmt, ...)
 }
 
 void
-panic(const char *fmt, ...)
+panic(const char* fmt, ...)
 {
     va_list ap;
 
