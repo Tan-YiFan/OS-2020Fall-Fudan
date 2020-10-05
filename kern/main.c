@@ -14,8 +14,8 @@ main()
     extern char edata[], end[];
 
     /* TODO: Use `memset` to clear the BSS section of our program. */
-    memset(edata, 0, (end - edata));
+    memset(edata, 0x3f3f3f3f, end - edata);
     /* TODO: Use `cprintf` to print "hello, world\n" */
-
+    cprintf("hello, world\n");
     while (1);
 }

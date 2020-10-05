@@ -78,6 +78,7 @@ el1:
      */ 
     ldr     x1, =main
     br      x1
+    #b main
 
 halt:
     wfe
