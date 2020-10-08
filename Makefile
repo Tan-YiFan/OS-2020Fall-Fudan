@@ -24,9 +24,16 @@ OBJCOPY := $(CROSS)-objcopy
 
 CFLAGS := -Wall -g \
           -fno-pie -fno-pic -fno-stack-protector \
+          -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
-	      -MMD -MP
+          -MMD -MP
+
+V := @
+# Run 'make V=1' to turn on verbose commands
+ifeq ($(V),1)
+override V =
+endif
 
 V := @
 # Run 'make V=1' to turn on verbose commands
@@ -65,7 +72,7 @@ $(KERN_ELF): kern/linker.ld $(OBJS)
 	@echo + ld $@
 	$(V)$(LD) -o $@ -T $< $(OBJS)
 	@echo + objdump $@
-	$(V)$(OBJDUMP) -S -D $@ > $(basename $@).asm
+	$(V)$(OBJDUMP) -S -d $@ > $(basename $@).asm
 	$(V)$(OBJDUMP) -x $@ > $(basename $@).hdr
 
 $(KERN_IMG): $(KERN_ELF)
@@ -81,7 +88,7 @@ qemu-gdb: $(KERN_IMG)
 	$(QEMU) -kernel $< -S -gdb tcp::1234
 
 gdb: 
-	gdb-multiarch -n -x .gdbinit
+	aarch64-linux-gdb -x .gdbinit
 
 clean:
 	rm -r $(BUILD_DIR)
