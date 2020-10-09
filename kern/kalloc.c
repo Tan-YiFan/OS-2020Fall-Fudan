@@ -46,10 +46,10 @@ kfree(char* v)
         kmem.free_list = (struct run*)v;
         kmem.free_list->next = NULL;
     }
-    else if (r != NULL) {
+    else {
         struct run* k;
         k = kmem.free_list;
-        kmem.free_list = (struct run*)r;
+        kmem.free_list = (struct run*)v;
         kmem.free_list->next = k;
         // for (r = kmem.free_list; r; r = r->next) {
         //     // the page has already been free
