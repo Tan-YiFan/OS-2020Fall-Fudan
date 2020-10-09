@@ -43,15 +43,26 @@ kfree(char* v)
 
     /* TODO: Your code here. */
     if (kmem.free_list == NULL) {
-        kmem.free_list = v;
+        kmem.free_list = (struct run*)v;
+        kmem.free_list->next = NULL;
     }
-    else {
-        for (r = kmem.free_list; r; r = r->next) {
-            if (r->next == NULL) {
-                r->next = v;
-                break;
-            }
-        }
+    else if (r != NULL) {
+        struct run* k;
+        k = kmem.free_list;
+        kmem.free_list = (struct run*)r;
+        kmem.free_list->next = k;
+        // for (r = kmem.free_list; r; r = r->next) {
+        //     // the page has already been free
+        //     if (r == (struct run*)v) {
+        //         break;
+        //     }
+
+        //     if (r->next == NULL) {
+        //         r->next = (struct run*)v;
+        //         r->next->next = NULL;
+        //         break;
+        //     }
+        // }
     }
 
 
@@ -78,7 +89,7 @@ kalloc()
     if (kmem.free_list == NULL) {
         return 0;
     }
-    char* ret = kmem.free_list;
+    char* ret = (char*)kmem.free_list;
     kmem.free_list = kmem.free_list->next;
 
     return ret;
