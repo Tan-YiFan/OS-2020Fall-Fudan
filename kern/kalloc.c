@@ -43,30 +43,34 @@ kfree(char* v)
 
     /* TODO: Your code here. */
     r = (struct run*)v;
+    // lock kmem
     r->next = kmem.free_list;
     kmem.free_list = r;
-    // if (kmem.free_list == NULL) {
-    //     kmem.free_list = (struct run*)v;
-    //     kmem.free_list->next = NULL;
-    // }
-    // else {
-    //     struct run* k;
-    //     k = kmem.free_list;
-    //     kmem.free_list = (struct run*)v;
-    //     kmem.free_list->next = k;
-    //     // for (r = kmem.free_list; r; r = r->next) {
-    //     //     // the page has already been free
-    //     //     if (r == (struct run*)v) {
-    //     //         break;
-    //     //     }
+    // unlock
 
-    //     //     if (r->next == NULL) {
-    //     //         r->next = (struct run*)v;
-    //     //         r->next->next = NULL;
-    //     //         break;
-    //     //     }
-    //     // }
-    // }
+    // another version
+    /* if (kmem.free_list == NULL) {
+        kmem.free_list = (struct run*)v;
+        kmem.free_list->next = NULL;
+    }
+    else {
+        struct run* k;
+        k = kmem.free_list;
+        kmem.free_list = (struct run*)v;
+        kmem.free_list->next = k;
+        // for (r = kmem.free_list; r; r = r->next) {
+        //     // the page has already been free
+        //     if (r == (struct run*)v) {
+        //         break;
+        //     }
+
+        //     if (r->next == NULL) {
+        //         r->next = (struct run*)v;
+        //         r->next->next = NULL;
+        //         break;
+        //     }
+        // }
+    } */
 
 
 }
@@ -89,14 +93,21 @@ char*
 kalloc()
 {
     /* TODO: Your code here. */
-    char* ret = (char*)kmem.free_list;
-    if (kmem.free_list == NULL) {
-        return 0;
+    struct run* r;
+
+    // lock kmem
+    r = kmem.free_list;
+    if (r) {
+        kmem.free_list = r->next;
+    }
+    // unlock
+
+    if (r) {
+        memset((char*)r, 0x11, PGSIZE);
     }
 
-    kmem.free_list = kmem.free_list->next;
+    return (char*)r;
 
-    return ret;
 }
 
 void
