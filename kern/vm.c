@@ -8,7 +8,7 @@
 #include "vm.h"
 #include "kalloc.h"
 
-/* 
+/*
  * Given 'pgdir', a pointer to a page directory, pgdir_walk returns
  * a pointer to the page table entry (PTE) for virtual address 'va'.
  * This requires walking the four-level page table structure.
@@ -21,10 +21,29 @@
  *     a pointer into the new page table page.
  */
 
-static uint64_t *
-pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
+static uint64_t*
+pgdir_walk(uint64_t* pgdir, const void* va, int64_t alloc)
 {
     /* TODO: Your code here. */
+    if ((uint64_t)va > (1 << (12 + 9 + 9 + 9 - 1))) {
+        panic("walk");
+    }
+
+    for (int level = 0; level < 3; level++) {
+        uint64_t* pte = &pgdir[PTX(level, (uint64_t)va)];
+        if (*pte & PTE_P) {
+            // hit
+            pgdir = (uint64_t*)PTE_ADDR(*pte);
+        }
+        else {
+            if (!alloc || ((pgdir = (uint64_t*)kalloc()) == NULL)) {
+                return NULL;
+            }
+            memset(pgdir, 0, PGSIZE);
+            *pte = (((uint64_t)pgdir >> 12) << 10);
+        }
+    }
+    return &pgdir[PTX(3, va)];
 }
 
 /*
@@ -37,19 +56,20 @@ pgdir_walk(uint64_t *pgdir, const void *va, int64_t alloc)
  */
 
 static int
-map_region(uint64_t *pgdir, void *va, uint64_t size, uint64_t pa, int64_t perm)
+map_region(uint64_t* pgdir, void* va, uint64_t size, uint64_t pa, int64_t perm)
 {
     /* TODO: Your code here. */
+
 }
 
-/* 
+/*
  * Free a page table.
  *
  * Hint: You need to free all existing PTEs for this pgdir.
  */
 
 void
-vm_free(uint64_t *pgdir, int level)
+vm_free(uint64_t* pgdir, int level)
 {
     /* TODO: Your code here. */
 }
