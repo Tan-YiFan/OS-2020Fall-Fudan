@@ -96,14 +96,18 @@ vm_free(uint64_t* pgdir, int level)
     switch (level) {
     case 3:
         for (int i = 0; i < 512; i++) {
-            kfree((char*)PTE_ADDR(pgdir[i]));
+            if (pgdir[i] & PTE_P) {
+                kfree((char*)PTE_ADDR(pgdir[i]));
+            }
         }
         break;
     case 0:
     case 1:
     case 2:
         for (int i = 0; i < 512; i++) {
-            vm_free((uint64_t*)PTE_ADDR(pgdir[i]), level + 1);
+            if (pgdir[i] & PTE_P) {
+                vm_free((uint64_t*)PTE_ADDR(pgdir[i]), level + 1);
+            }
         }
         break;
     default:
