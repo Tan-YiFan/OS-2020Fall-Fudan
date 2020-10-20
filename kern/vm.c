@@ -34,7 +34,7 @@ pgdir_walk(uint64_t* pgdir, const void* va, int64_t alloc)
         if (*pte & PTE_P) {
             // hit
             assert(*pte & PTE_TABLE); // should be table instead of block
-            pgdir = (uint64_t*)P2V(*pte);
+            pgdir = (uint64_t*)P2V(PTE_ADDR(*pte));
         }
         else {
             if (!alloc || ((pgdir = (uint64_t*)kalloc()) == NULL)) {
@@ -67,7 +67,7 @@ map_region(uint64_t* pgdir, void* va, uint64_t size, uint64_t pa, int64_t perm)
     a = PTE_ADDR((uint64_t)va);
     last = PTE_ADDR((uint64_t)va + (uint64_t)size - 1ul);
     while (1) {
-        if ((pte = pgdir_walk(pgdir, a, 1)) == NULL) {
+        if ((pte = pgdir_walk(pgdir, (const void*)a, 1)) == NULL) {
             return -1;
         }
         if (*pte & PTE_P) {
@@ -96,14 +96,14 @@ vm_free(uint64_t* pgdir, int level)
     switch (level) {
     case 3:
         for (int i = 0; i < 512; i++) {
-            kfree(PTE_ADDR(pgdir[i]));
+            kfree((char*)PTE_ADDR(pgdir[i]));
         }
         break;
     case 0:
     case 1:
     case 2:
         for (int i = 0; i < 512; i++) {
-            vm_free(PTE_ADDR(pgdir[i]), level + 1);
+            vm_free((uint64_t*)PTE_ADDR(pgdir[i]), level + 1);
         }
         break;
     default:
