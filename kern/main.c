@@ -3,7 +3,7 @@
 #include "string.h"
 #include "console.h"
 #include "kalloc.h"
-
+#include "vm.h"
 void
 main()
 {
@@ -21,5 +21,6 @@ main()
     alloc_init();
     cprintf("Allocator: Init success.\n");
     check_free_list();
+    test_map_region();
     while (1);
 }
