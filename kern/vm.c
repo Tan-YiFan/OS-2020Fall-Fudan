@@ -93,6 +93,7 @@ void
 vm_free(uint64_t* pgdir, int level)
 {
     /* TODO: Your code here. */
+    assert((uint64_t)pgdir & 0xffful == 0ul);
     switch (level) {
     case 3:
         for (int i = 0; i < 512; i++) {
@@ -109,6 +110,7 @@ vm_free(uint64_t* pgdir, int level)
                 vm_free((uint64_t*)PTE_ADDR(pgdir[i]), level + 1);
             }
         }
+        kfree((char*)pgdir);
         break;
     default:
         panic("vm_free: unexpected level: %d\n", level);
