@@ -6,6 +6,7 @@
 #include "kalloc.h"
 #include "trap.h"
 #include "timer.h"
+#include "spinlock.h"
 
 void
 main()
@@ -17,7 +18,13 @@ main()
 
     extern char edata[], end[], vectors[];
 
-    /* TODO: Use `memset` to clear the BSS section of our program. */
+    /*
+     * Determine which functions in main can only be
+     * called once, and use lock to guarantee this.
+     */
+     /* TODO: Your code here. */
+
+     /* TODO: Use `memset` to clear the BSS section of our program. */
     memset(edata, 0, end - edata);
     /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
@@ -29,6 +36,8 @@ main()
 
     lvbar(vectors);
     timer_init();
+
+    cprintf("CPU %d: Init success.\n", cpuid());
 
     while (1);
 }
