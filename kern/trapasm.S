@@ -12,7 +12,7 @@ alltraps:
      */
 
     /* TODO: Your code here. */
-    sub sp, sp, #0x20        /* reserverd for LR, SP, SPSR and ELR */
+    sub sp, sp, #0x20
 	stp	x28, x29, [sp, #-16]!
 	stp	x26, x27, [sp, #-16]!
 	stp	x24, x25, [sp, #-16]!
@@ -28,20 +28,19 @@ alltraps:
 	stp	x4, x5, [sp, #-16]!
 	stp	x2, x3, [sp, #-16]!
 	stp	x0, x1, [sp, #-16]!
-	add x21, sp, #0x110
-
-	mrs	x22, elr_el1             /* ELR */
-	mrs	x23, spsr_el1            /* SPSR */
-
-	stp	x30, x21, [sp, #0xf0]    /* LR, SP */
-	stp	x22, x23, [sp, #0x100]   /* ELR, SPSR */
+	add x1, sp, #0x110
+	mrs	x2, elr_el1
+	mrs	x3, spsr_el1
+	stp	x30, x1, [sp, #0xf0]
+	stp	x2, x3, [sp, #0x100]
     /*
      * Call trap(struct *trapframe).
      * Hint: The first argument is a stack pointer.
      */
 
     /* TODO: Your code here. */
-    b trap
+    add x0, sp, #0
+    bl trap
 /* Return falls through to trapret. */
 .global trapret
 trapret:
@@ -52,15 +51,12 @@ trapret:
      */
 
     /* TODO: Your code here. */
-    ldp	x22, x23, [sp, #0x100]   /* ELR, SPSR */
-	ldp	x30, x28, [sp, #0xf0]    /* LR, SP */
-
-	msr	elr_el1, x22             /* ELR */
-	msr	spsr_el1, x23
-	msr sp_el0, x28
-
+    ldp	x1, x2, [sp, #0x100]
+	msr	elr_el1, x1
+	msr	spsr_el1, x2
+	ldp	x30, x1, [sp, #0xf0]
+	msr sp_el0, x1
 	mov x29, sp
-
 	ldp	x0, x1, [x29], #16
 	ldp	x2, x3, [x29], #16
 	ldp	x4, x5, [x29], #16

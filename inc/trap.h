@@ -7,6 +7,7 @@ struct trapframe {
     /* TODO: Design your own trapframe layout here. */
     uint64_t elr_el1;
     uint64_t spsr_el1;
+    uint64_t r30;
     uint64_t sp_el0;
     uint64_t r0;
     uint64_t r1;
@@ -38,7 +39,7 @@ struct trapframe {
     uint64_t r27;
     uint64_t r28;
     uint64_t r29;
-    uint64_t r30;
+
 };
 
 void trap(struct trapframe*);
