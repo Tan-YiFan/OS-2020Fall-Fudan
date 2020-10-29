@@ -29,6 +29,6 @@ main()
 
     lvbar(vectors);
     timer_init();
-
+    sti();
     while (1);
 }
