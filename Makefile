@@ -88,7 +88,7 @@ qemu-gdb: $(KERN_IMG)
 	$(QEMU) -kernel $< -S -gdb tcp::1234
 
 gdb: 
-	gdb-multiarch -n -x .gdbinit
+	aarch64-linux-gdb -x .gdbinit
 
 clean:
 	rm -r $(BUILD_DIR)
