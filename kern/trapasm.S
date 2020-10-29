@@ -13,26 +13,26 @@ alltraps:
 
     /* TODO: Your code here. */
     sub sp, sp, #0x20
-	stp	x28, x29, [sp, #-16]!
-	stp	x26, x27, [sp, #-16]!
-	stp	x24, x25, [sp, #-16]!
-	stp	x22, x23, [sp, #-16]!
-	stp	x20, x21, [sp, #-16]!
-	stp	x18, x19, [sp, #-16]!
-	stp	x16, x17, [sp, #-16]!
-	stp	x14, x15, [sp, #-16]!
-	stp	x12, x13, [sp, #-16]!
-	stp	x10, x11, [sp, #-16]!
-	stp	x8, x9, [sp, #-16]!
-	stp	x6, x7, [sp, #-16]!
-	stp	x4, x5, [sp, #-16]!
-	stp	x2, x3, [sp, #-16]!
-	stp	x0, x1, [sp, #-16]!
+	stp	x29, x30, [sp, #-16]!
+	stp	x27, x28, [sp, #-16]!
+	stp	x25, x26, [sp, #-16]!
+	stp	x23, x24, [sp, #-16]!
+	stp	x21, x22, [sp, #-16]!
+	stp	x19, x20, [sp, #-16]!
+	stp	x17, x18, [sp, #-16]!
+	stp	x15, x16, [sp, #-16]!
+	stp	x13, x14, [sp, #-16]!
+	stp	x11, x12, [sp, #-16]!
+	stp	x9, x10, [sp, #-16]!
+	stp	x7, x8, [sp, #-16]!
+	stp	x5, x6, [sp, #-16]!
+	stp	x3, x4, [sp, #-16]!
+	stp	x1, x2, [sp, #-16]!
 	add x1, sp, #0x110
-	mrs	x2, elr_el1
-	mrs	x3, spsr_el1
-	stp	x30, x1, [sp, #0xf0]
-	stp	x2, x3, [sp, #0x100]
+	mrs	x2, spsr_el1
+	mrs	x3, elr_el1
+	stp	x1, x0, [sp, #0xf0]
+	stp	x3, x2, [sp, #0x100]
     /*
      * Call trap(struct *trapframe).
      * Hint: The first argument is a stack pointer.
@@ -54,23 +54,23 @@ trapret:
     ldp	x1, x2, [sp, #0x100]
 	msr	elr_el1, x1
 	msr	spsr_el1, x2
-	ldp	x30, x1, [sp, #0xf0]
+	ldr x1, [sp, #0xf0]
 	msr sp_el0, x1
-	mov x29, sp
-	ldp	x0, x1, [x29], #16
-	ldp	x2, x3, [x29], #16
-	ldp	x4, x5, [x29], #16
-	ldp	x6, x7, [x29], #16
-	ldp	x8, x9, [x29], #16
-	ldp	x10, x11, [x29], #16
-	ldp	x12, x13, [x29], #16
-	ldp	x14, x15, [x29], #16
-	ldp	x16, x17, [x29], #16
-	ldp	x18, x19, [x29], #16
-	ldp	x20, x21, [x29], #16
-	ldp	x22, x23, [x29], #16
-	ldp	x24, x25, [x29], #16
-	ldp	x26, x27, [x29], #16
-	ldr x28, [x29], #8
-	ldr x29, [x29]
+	mov x30, sp
+	ldp	x0, x1, [x30], #16
+	ldp	x2, x3, [x30], #16
+	ldp	x4, x5, [x30], #16
+	ldp	x6, x7, [x30], #16
+	ldp	x8, x9, [x30], #16
+	ldp	x10, x11, [x30], #16
+	ldp	x12, x13, [x30], #16
+	ldp	x14, x15, [x30], #16
+	ldp	x16, x17, [x30], #16
+	ldp	x18, x19, [x30], #16
+	ldp	x20, x21, [x30], #16
+	ldp	x22, x23, [x30], #16
+	ldp	x24, x25, [x30], #16
+	ldp	x26, x27, [x30], #16
+	ldp x28, x29, [x30], #16
+	ldr x30, [x30]
     eret
