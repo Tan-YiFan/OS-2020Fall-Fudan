@@ -24,6 +24,28 @@ The offset to be selected is determined by:
 * If the exception is being taken at the same Exception level, the Stack Pointer to be used (SP0 or SPx).
 * If the exception is being taken at a lower Exception level, the execution state of the next lower level (AArch64 or AArch32).
 
+### 1.2 The Generic Interrupt Controller
+
+ARM provides a standard interrupt controller, the programming interface to which is defined in the `GIC` architecture. This is a brief introduction of it.
+
+`GIC` can be divided into two major parts:
+
+* **Distributor**. This is where all interrupt sources are connected. The distributor manages the status of each individual interrupt and selects one to send to the CPU.
+* **CPU interface**. One CPU interface for each core. It's where a CPU core receives an interrupt.
+
+Interrupts are identified by an `interrupt ID` and are grouped as:
+
+* **Software Generated Interrupt (SGI)**. The ID range is 0 to 15.
+* **Private Peripheral Interrupt (PPI)**. The ID range is 16 to 31.
+* **Shared Peripheral Interrupt (SPI)**. The ID range is 32 to 1020.
+
+Interrupts can have several states:
+
+* Inactive
+* Pending
+* Active
+* Active and pending
+
 ## 2. Homework
 
 ### 2.1 What happens when an interrupt occurs
@@ -34,11 +56,11 @@ When an interrupt occurs, the system checks whether the interrupt mask bit for t
 
 * Save the `PC` to be returned to `ELR` register and the `PSTATE` to `SPSR` register.
 * Disable the `DAIF` bits.
-* Jump to the handler, which is usually written in assembly code.
+* Jump to the handler, which is usually written in assembly code. Switch the stack pointer to `SP_ELn` where n is the exception level of the handler.
 * Save corruptible registers, including all common registers, `ELR`, `SPSR` of the exception level taken to and the `SP` of the exception level where the interrupt occurs.
 * Call a C subroutine to handle the interrupt, and then return to the interrupt handler written by `asm`.
 * Restore the registers which are saved previously.
-* Use `eret` instruction to continue executing the code where the interrupt occurs.
+* Use `eret` instruction to continue executing the code where the interrupt occurs. Switch the stack pointer to `SP_ELm` where m is the exception level of where the interrupt occurs.
 
 ### 2.2 Trap Frame
 
@@ -56,7 +78,7 @@ struct trapframe {
 The design of the trap frame should consider:
 
 * Interrupts are not function calls, so both caller-saved registers and the callee-saved registers should be involved in the trap frame.
-* To ensure better cache efficiency, the `push` and `pop` sequence in the interrupt handler should be uniform to the placement of the `trapframe` structure.
+* The `push` and `pop` sequence in the interrupt handler should be uniform to the placement of the `trapframe` structure. The trap frame structure pointer would be used.
 
 ### 2.3 Store and Reload Registers
 
@@ -77,3 +99,7 @@ stp	x3, x2, [sp, #0x100]
 After building the trap frame, jump to the `trap` function via `bl trap` instruction. The `trap` function has an argument `struct *trapframe tf` which is transfered by `r0` register. 
 
 Similarly, reloading the registers involves a set of `pop` operations. When it comes to system registers, the value is transfered in some common registers and then sent to the system registers. After restoring all the registers, execute the `eret` instruction.
+
+### 2.4 Test Snapshot
+
+### ![test](/home/tanyifan/Desktop/OS/OS-2020Fall-Fudan/homework/test.png)
