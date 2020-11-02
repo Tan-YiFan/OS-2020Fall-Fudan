@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "console.h"
 #include "kalloc.h"
+#include "spinlock.h"
 
 extern char end[];
 
@@ -18,11 +19,13 @@ struct run {
 
 struct {
     struct run* free_list; /* Free list of physical pages */
+    struct spinlock lock;
 } kmem;
 
 void
 alloc_init()
 {
+    kmem.lock.locked = 0;
     free_range(end, P2V(PHYSTOP));
 }
 
@@ -43,10 +46,13 @@ kfree(char* v)
 
     /* TODO: Your code here. */
     r = (struct run*)v;
+
     // lock kmem
+    acquire(&kmem.lock);
     r->next = kmem.free_list;
     kmem.free_list = r;
     // unlock
+    release(&kmem.lock);
 
     // another version
     /* if (kmem.free_list == NULL) {
@@ -96,11 +102,13 @@ kalloc()
     struct run* r;
 
     // lock kmem
+    acquire(&kmem.lock);
     r = kmem.free_list;
     if (r) {
         kmem.free_list = r->next;
     }
     // unlock
+    release(&kmem.lock);
 
     if (r) {
         memset((char*)r, 0x11, PGSIZE);
