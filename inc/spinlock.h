@@ -4,7 +4,14 @@
 struct spinlock {
     volatile int locked;
 };
-void acquire(struct spinlock *);
-void release(struct spinlock *);
+void acquire(struct spinlock*);
+void release(struct spinlock*);
+
+struct cpu {
+    int ncli;
+    unsigned char prev_int_enabled;
+};
+
+static struct cpu cpus[64] = { 0 };
 
 #endif

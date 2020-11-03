@@ -22,7 +22,7 @@ main()
      */
 
     extern char edata[], end[], vectors[];
-
+    sti();
     /*
      * Determine which functions in main can only be
      * called once, and use lock to guarantee this.
