@@ -8,6 +8,11 @@
 #include "timer.h"
 #include "spinlock.h"
 
+struct check_once {
+    int count;
+    struct spinlock lock;
+};
+struct check_once alloc_once = { 0 };
 void
 main()
 {
@@ -28,9 +33,15 @@ main()
     memset(edata, 0, end - edata);
     /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
-    alloc_init();
-    cprintf("Allocator: Init success.\n");
-    check_free_list();
+
+    acquire(&alloc_once.lock);
+    if (!alloc_once.count) {
+        alloc_once.count = 1;
+        alloc_init();
+        cprintf("Allocator: Init success.\n");
+        check_free_list();
+    }
+    release(&alloc_once.lock);
 
     irq_init();
 
