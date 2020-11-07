@@ -39,10 +39,9 @@ main()
         alloc_once.count = 1;
         alloc_init();
         cprintf("Allocator: Init success.\n");
-        check_free_list();
     }
     release(&alloc_once.lock);
-
+    check_free_list();
     irq_init();
 
     lvbar(vectors);

@@ -8,7 +8,7 @@ void acquire(struct spinlock*);
 void release(struct spinlock*);
 
 struct cpu {
-    int clock_num;
+    int lock_num;
     unsigned char prev_int_enabled;
 };
 

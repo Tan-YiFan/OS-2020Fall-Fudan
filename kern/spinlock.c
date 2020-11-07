@@ -6,9 +6,10 @@
 void
 acquire(struct spinlock* lk)
 {
-    cli_req();
+
     while (lk->locked || __atomic_test_and_set(&lk->locked, __ATOMIC_ACQUIRE))
         ;
+    cli_req();
 }
 
 void

@@ -121,7 +121,7 @@ cli_req()
     int enabled = interrput_enabled();
     cli();
     int id = cpuid();
-    if (cpus[id].clock_num++ == 0) {
+    if (cpus[id].lock_num++ == 0) {
         cpus[id].prev_int_enabled = enabled;
     }
 
@@ -134,11 +134,11 @@ cli_resp()
         panic("No corresponding req for resp!\n");
     }
     int id = cpuid();
-    if (--cpus[id].clock_num < 0) {
+    if (--cpus[id].lock_num < 0) {
         panic("No corresponding req for resp!\n");
     }
 
-    if ((cpus[id].clock_num == 0) && cpus[id].prev_int_enabled) {
+    if ((cpus[id].lock_num == 0) && cpus[id].prev_int_enabled) {
         sti();
     }
 }
