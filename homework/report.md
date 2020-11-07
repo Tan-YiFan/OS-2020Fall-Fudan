@@ -46,6 +46,41 @@ Although the architecture and the hardware support implementations of exclusive 
 
 ### 2.1 Multi-core Booting
 
+I will divide the `entry.S` into five parts, according to the symbols in this file.
+
+#### 2.1.1 _start
+
+The `_start` section is located at address `0x80000`. In this section, the CPU stores the address of the next section `mp_start` somewhere in the memory.
+
+This section is only executed by one CPU core (in our labs, CPU #0 executes this part). The CPU core has the mission to wake other the CPU cores up, which is divided into two parts: one is store the address of `mp_start` in $n-1$ locations where $n$ means the total CPU cores in the machines (in our labs, $n$ is 4); the other is synchronize data and instruction memory via `dsb` and `isb` instruction, and wake other CPU cores up via `sev` instruction.
+
+For the other cores, they drop in an infinite loop executing `wfe` instruction before being waken. This instruction would set the processor in a low power mode and wait for being waken.
+
+
+
+The below parts of instruction is executed by all cores.
+
+#### 2.1.2 mp_start
+
+This part is multi-processor start part. The processor gets the information of the current exception level and branches to the corresponding part.
+
+#### 2.1.3 `EL3`
+
+This part configures the `SCR_EL3`, the `SPSR_EL3` and `ELR_EL3` register and then jump to exception level 2 via `eret` instruction.
+
+#### 2.1.4 `EL2`
+
+This part configures the `HCR_EL2`, the `SCTLR_EL1`, the `SPSR_EL2` and the `ELR_EL2` register and then jump to exception level 1 via `eret` instruction.
+
+#### 2.1.5 `EL1`
+
+In this part:
+
+* The kernel page table is configured and the `MMU` is enabled, which means the instructions above all use physical address. The related registers are `TTBR0_EL1`, `TTBR1_EL1`, `TCR_EL1`, `MAIR_EL1` and `SCTLR_EL1`.
+* The stack pointer is configured for all cores. Each stack pointer is located at the beginning of different pages. The address of the pages are below the `_start` section in order to avoid conflicts.
+
+Finally, the processor branches to main function. 
+
 ### 2.2 Spin-locks and Interrupts
 
 Reference of this part: [xv6-armv8](https://github.com/sudharson14/xv6-OS-for-arm-v8)
