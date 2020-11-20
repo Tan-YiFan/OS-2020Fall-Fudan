@@ -8,7 +8,7 @@
  * Check whether this cpu is holding the lock.
  */
 int
-holding(struct spinlock *lk)
+holding(struct spinlock* lk)
 {
     int hold;
     hold = lk->locked && lk->cpu == thiscpu;
@@ -16,14 +16,14 @@ holding(struct spinlock *lk)
 }
 
 void
-initlock(struct spinlock *lk, char *name) {
+initlock(struct spinlock* lk, char* name) {
     lk->name = name;
     lk->locked = 0;
     lk->cpu = 0;
 }
 
 void
-acquire(struct spinlock *lk)
+acquire(struct spinlock* lk)
 {
     if (holding(lk)) {
         panic("acquire: spinlock already held\n");
@@ -34,10 +34,10 @@ acquire(struct spinlock *lk)
 }
 
 void
-release(struct spinlock *lk)
+release(struct spinlock* lk)
 {
     if (!holding(lk)) {
-        panic("release: not locked\n");
+        panic("release: lock %s not locked\n", lk->name);
     }
     lk->cpu = NULL;
     __atomic_clear(&lk->locked, __ATOMIC_RELEASE);

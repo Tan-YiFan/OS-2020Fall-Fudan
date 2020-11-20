@@ -55,11 +55,8 @@ proc_alloc()
     // found
 
     // pagetable
-    p->pgdir = (uint64_t*)kalloc();
-    if (p->pgdir == NULL) {
-        panic("proc_alloc: cannot alloc pagetable");
-    }
-    memset(p->pgdir, 0, PGSIZE);
+    p->pgdir = pgdir_init();
+    // memset(p->pgdir, 0, PGSIZE);
 
     // kstack
     char* sp = kalloc();
@@ -67,6 +64,7 @@ proc_alloc()
         panic("proc_alloc: cannot alloc kstack");
     }
     p->kstack = sp + KSTACKSIZE;
+    sp += KSTACKSIZE;
     // trapframe
     sp -= sizeof(*(p->tf));
     p->tf = (struct trapframe*)sp;
@@ -81,7 +79,7 @@ proc_alloc()
     sp -= sizeof(*(p->context));
     p->context = (struct context*)sp;
     memset(p->context, 0, sizeof(*(p->context)));
-    p->context->r30 = (uint64_t)forkret;
+    p->context->r30 = (uint64_t)forkret + 8;
 
     // other settings
     p->pid = nextpid++;
@@ -107,6 +105,7 @@ user_init()
 
     /* TODO: Your code here. */
     p = proc_alloc();
+
     if (p == NULL) {
         panic("user_init: cannot allocate a process");
     }
@@ -115,6 +114,7 @@ user_init()
     uvm_init(p->pgdir, _binary_obj_user_initcode_start, (long)_binary_obj_user_initcode_size);
 
     // tf
+    memset(p->tf, 0, sizeof(*(p->tf)));
     p->tf->spsr_el1 = 0;
     p->tf->sp_el0 = PGSIZE;
     p->tf->r30 = 0;
@@ -189,4 +189,5 @@ exit()
 {
     struct proc* p = thiscpu->proc;
     /* TODO: Your code here. */
+
 }

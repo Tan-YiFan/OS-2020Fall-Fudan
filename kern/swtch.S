@@ -17,10 +17,10 @@ swtch:
 	stp	x21, x22, [sp, #-16]!
 	stp	x19, x20, [sp, #-16]!
 	stp	x17, x18, [sp, #-16]!
-	stp	x16, [sp, #-8]!
+	str	x16, [sp, #-8]!
 
     mov x21, sp
-    ldr x21, [x0]
+    str x21, [x0]
     mov sp, x1
 
     ldr x16, [sp], #8
@@ -31,3 +31,4 @@ swtch:
 	ldp	x25, x26, [sp], #16
 	ldp	x27, x28, [sp], #16
 	ldp x29, x30, [sp], #16
+	br x30
