@@ -153,7 +153,7 @@ uvm_init(uint64_t* pgdir, char* binary, int sz)
         panic("uvm_init: cannot alloc a page");
     }
     memset(r, 0, PGSIZE);
-    map_region(pgdir, (void*)0, sz, V2P(r), PTE_USER | PTE_RW | PTE_PAGE);
+    map_region(pgdir, (void*)0, PGSIZE, V2P(r), PTE_USER | PTE_RW | PTE_PAGE);
     memmove(r, (void*)binary, sz);
 }
 
@@ -167,5 +167,5 @@ uvm_switch(struct proc* p)
     if (p->pgdir == NULL) {
         panic("uvm_switch: pgdir is null pointer");
     }
-    lttbr0((uint64_t)p->pgdir);
+    lttbr0(V2P(p->pgdir));
 }
