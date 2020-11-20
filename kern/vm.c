@@ -76,7 +76,7 @@ map_region(uint64_t* pgdir, void* va, uint64_t size, uint64_t pa, int64_t perm)
         if (*pte & PTE_P) {
             panic("remap");
         }
-        *pte = V2P(pa) | perm | PTE_P | PTE_TABLE | PTE_AF;
+        *pte = V2P(pa) | perm | PTE_P | PTE_TABLE | (MT_NORMAL << 2) | PTE_AF | PTE_SH;
         if (a == last) {
             break;
         }
@@ -127,6 +127,12 @@ uint64_t*
 pgdir_init()
 {
     /* TODO: Your code here. */
+    uint64_t* ret = (uint64_t*)kalloc();
+    if (ret == NULL) {
+        panic("pgdir_init: unable to allocate a page table");
+    }
+    memset(ret, 0, PGSIZE);
+    return ret;
 }
 
 /*
@@ -139,6 +145,16 @@ void
 uvm_init(uint64_t* pgdir, char* binary, int sz)
 {
     /* TODO: Your code here. */
+    if (sz >= PGSIZE) {
+        panic("uvm_init: init process too big");
+    }
+    char* r = kalloc();
+    if (r == NULL) {
+        panic("uvm_init: cannot alloc a page");
+    }
+    memset(r, 0, PGSIZE);
+    map_region(pgdir, (void*)0, sz, V2P(r), PTE_USER | PTE_RW | PTE_PAGE);
+    memmove(r, (void*)binary, sz);
 }
 
 /*
@@ -148,4 +164,8 @@ void
 uvm_switch(struct proc* p)
 {
     /* TODO: Your code here. */
+    if (p->pgdir == NULL) {
+        panic("uvm_switch: pgdir is null pointer");
+    }
+    lttbr0((uint64_t)p->pgdir);
 }
