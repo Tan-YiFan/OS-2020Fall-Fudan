@@ -7,6 +7,9 @@
 #include "trap.h"
 #include "timer.h"
 #include "spinlock.h"
+#include "proc.h"
+
+struct cpu cpus[NCPU];
 
 struct check_once {
     int count;
@@ -28,8 +31,8 @@ main()
      * called once, and use lock to guarantee this.
      */
      /* TODO: Your code here. */
-
-     /* TODO: Use `memset` to clear the BSS section of our program. */
+    cprintf("main: [CPU%d] is init kernel\n", cpuid());
+    /* TODO: Use `memset` to clear the BSS section of our program. */
     memset(edata, 0, end - edata);
     /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
@@ -44,11 +47,13 @@ main()
     release(&alloc_once.lock);
 
     irq_init();
+    proc_init();
+    user_init();
 
     lvbar(vectors);
     timer_init();
 
-    cprintf("CPU %d: Init success.\n", cpuid());
-
+    cprintf("main: [CPU%d] Init success.\n", cpuid());
+    scheduler();
     while (1);
 }

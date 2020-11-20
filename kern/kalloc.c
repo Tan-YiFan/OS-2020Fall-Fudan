@@ -123,7 +123,7 @@ check_free_list()
 {
     struct run* p;
     if (!kmem.free_list)
-        panic("'kmem.free_list' is a null pointer!");
+        panic("kmem.free_list is a null pointer!\n");
 
     for (p = kmem.free_list; p; p = p->next) {
         assert((void*)p > (void*)end);
