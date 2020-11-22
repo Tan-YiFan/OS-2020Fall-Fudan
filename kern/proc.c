@@ -14,7 +14,11 @@ struct {
 
 static struct proc* initproc;
 
-int nextpid = 1;
+// int nextpid = 1;
+struct {
+    int nextpid;
+    struct spinlock lock;
+} nextpid = { 1 };
 void forkret();
 extern void trapret();
 void swtch(struct context**, struct context*);
@@ -27,6 +31,7 @@ proc_init()
 {
     /* TODO: Your code here. */
     initlock(&ptable.lock, "proc table");
+    initlock(&nextpid.lock, "nextpid");
 }
 
 /*
@@ -82,7 +87,7 @@ proc_alloc()
     p->context->r30 = (uint64_t)forkret + 8;
 
     // other settings
-    p->pid = nextpid++;
+    p->pid = alloc_pid();
     p->state = EMBRYO;
 
     release(&ptable.lock);
@@ -121,6 +126,7 @@ user_init()
     p->tf->elr_el1 = 0;
 
     p->state = RUNNABLE;
+    p->sz = PGSIZE;
 }
 
 /*
@@ -166,6 +172,15 @@ void
 sched()
 {
     /* TODO: Your code here. */
+    if (!holding(&ptable.lock)) {
+        panic("sched: not holding ptable lock");
+    }
+
+    if (thiscpu->proc->state == RUNNING) {
+        panic("sched: process running");
+    }
+
+    swtch(&thiscpu->proc->context, thiscpu->scheduler);
 }
 
 /*
@@ -189,5 +204,35 @@ exit()
 {
     struct proc* p = thiscpu->proc;
     /* TODO: Your code here. */
+    /* if (p == initproc) {
+        panic("exit: init process shall not exit!");
+    } */
 
+    acquire(&ptable.lock);
+    p->state = ZOMBIE;
+    sched();
+
+    // never exit
+    panic("exit: shall not return");
+}
+
+void
+yield()
+{
+    acquire(&ptable.lock);
+    struct proc* p = thiscpu->proc;
+    p->state = RUNNABLE;
+    cprintf("yield: process id %d gives up the cpu %d\n", p->pid, cpuid());
+    sched();
+    release(&ptable.lock);
+}
+
+int
+alloc_pid()
+{
+    acquire(&nextpid.lock);
+    int pid = nextpid.nextpid;
+    nextpid.nextpid++;
+    release(&nextpid.lock);
+    return pid;
 }

@@ -16,6 +16,8 @@ struct check_once {
     struct spinlock lock;
 };
 struct check_once alloc_once = { 0 };
+struct check_once memset_once = { 0 };
+struct check_once initproc_once = { 0 };
 void
 main()
 {
@@ -31,12 +33,18 @@ main()
      * called once, and use lock to guarantee this.
      */
      /* TODO: Your code here. */
-    cprintf("main: [CPU%d] is init kernel\n", cpuid());
+
     /* TODO: Use `memset` to clear the BSS section of our program. */
-    memset(edata, 0, end - edata);
+
+    acquire(&memset_once.lock);
+    if (!memset_once.count) {
+        memset_once.count = 1;
+        memset(edata, 0, end - edata);
+    }
+    release(&memset_once.lock);
     /* TODO: Use `cprintf` to print "hello, world\n" */
     console_init();
-
+    cprintf("main: [CPU%d] is init kernel\n", cpuid());
     acquire(&alloc_once.lock);
     if (!alloc_once.count) {
         alloc_once.count = 1;
@@ -47,9 +55,14 @@ main()
     release(&alloc_once.lock);
 
     irq_init();
-    proc_init();
-    user_init();
 
+    acquire(&initproc_once.lock);
+    if (!initproc_once.count) {
+        initproc_once.count = 1;
+        proc_init();
+        user_init();
+    }
+    release(&initproc_once.lock);
     lvbar(vectors);
     timer_init();
 

@@ -66,5 +66,7 @@ void user_init();
 void scheduler();
 
 void exit();
+void yield();
+int alloc_pid();
 
 #endif
