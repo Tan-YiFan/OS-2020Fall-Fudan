@@ -172,15 +172,16 @@ void
 sched()
 {
     /* TODO: Your code here. */
+    struct proc* p = thiscpu->proc;
     if (!holding(&ptable.lock)) {
         panic("sched: not holding ptable lock");
     }
 
-    if (thiscpu->proc->state == RUNNING) {
+    if (p->state == RUNNING) {
         panic("sched: process running");
     }
 
-    swtch(&thiscpu->proc->context, thiscpu->scheduler);
+    swtch(&p->context, thiscpu->scheduler);
 }
 
 /*
