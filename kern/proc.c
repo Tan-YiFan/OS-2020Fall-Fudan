@@ -60,7 +60,7 @@ proc_alloc()
     // found
 
     // pagetable
-    p->pgdir = pgdir_init();
+    // p->pgdir = pgdir_init();
     // memset(p->pgdir, 0, PGSIZE);
 
     // kstack
@@ -68,7 +68,7 @@ proc_alloc()
     if (sp == NULL) {
         panic("proc_alloc: cannot alloc kstack");
     }
-    p->kstack = sp + KSTACKSIZE;
+    p->kstack = sp;
     sp += KSTACKSIZE;
     // trapframe
     sp -= sizeof(*(p->tf));
@@ -114,6 +114,10 @@ user_init()
     if (p == NULL) {
         panic("user_init: cannot allocate a process");
     }
+    if ((p->pgdir = pgdir_init()) == NULL) {
+        panic("user_init: cannot allocate a pagetable");
+    }
+
     initproc = p;
 
     uvm_init(p->pgdir, _binary_obj_user_initcode_start, (long)_binary_obj_user_initcode_size);
@@ -154,6 +158,7 @@ scheduler()
                 uvm_switch(p);
                 c->proc = p;
                 p->state = RUNNING;
+                cprintf("scheduler: process id %d takes the cpu %d\n", p->pid, cpuid());
                 swtch(&c->scheduler, p->context);
 
                 // back
