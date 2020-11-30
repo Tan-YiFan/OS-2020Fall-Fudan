@@ -61,6 +61,8 @@ main()
         initproc_once.count = 1;
         proc_init();
         user_init();
+        user_init();
+        user_init();
     }
     release(&initproc_once.lock);
     lvbar(vectors);

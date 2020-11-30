@@ -12,8 +12,8 @@ start:
     svc     0x00
 
 exit:
-    mov     x0, #SYS_exit
-    svc     0x00
+    /* mov     x0, #SYS_exit
+    svc     0x00 */
     b       exit
 
 # char init[] = "/init\0";
