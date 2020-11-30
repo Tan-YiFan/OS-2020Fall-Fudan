@@ -188,4 +188,27 @@ scheduler: process id 2 takes the cpu 3
 
 Printing the parameters of `sys_exec` does not add locks, so the output is out-of-order.
 
- As can be seen in the output, the kernel runs smoothly.
+As can be seen in the output, the kernel runs smoothly.
+
+Reversing the code in initcode and main, the output is like:
+
+```
+qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -kernel obj/kernel8.img
+main: [CPU0] is init kernel
+main: [CPU3] is init kernel
+main: [CPU2] is init kernel
+main: [CPU1] is init kernel
+Allocator: Init success.
+irq_init: - irq init
+irq_init: - irq init
+irq_init: - irq init
+irq_init: - irq init
+main: [CPU2] Init success.
+main: [CPU3] Init success.
+main: [CPU1] Init success.
+main: [CPU0] Init success.
+scheduler: process id 1 takes the cpu 2
+sys_exec: executing /init with parameters: /init 
+sys_exit: in exit
+```
+
