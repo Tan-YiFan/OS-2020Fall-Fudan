@@ -4,4 +4,4 @@ file obj/kernel8.elf
 
 # Uncomment the following line and change
 # PAHT_TO_PWNDBG to your pwndbg directory to enable pwndbg
-  source ~/pwndbg/gdbinit.py
+# source ~/pwndbg/gdbinit.py
