@@ -34,6 +34,8 @@ main()
      */
      /* TODO: Your code here. */
 
+    cprintf("main: [CPU%d] is init kernel\n", cpuid());
+
     /* TODO: Use `memset` to clear the BSS section of our program. */
 
     acquire(&memset_once.lock);
@@ -55,6 +57,8 @@ main()
     release(&alloc_once.lock);
 
     irq_init();
+    proc_init();
+    user_init();
 
     acquire(&initproc_once.lock);
     if (!initproc_once.count) {
