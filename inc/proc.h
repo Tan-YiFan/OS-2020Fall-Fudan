@@ -67,6 +67,7 @@ void scheduler();
 
 void exit();
 void yield();
+void wakeup(void*);
 int alloc_pid();
 
 #endif

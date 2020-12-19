@@ -21,6 +21,6 @@
 
 void sd_init();
 void sd_intr();
-void sdrw(struct buf *);
+void sdrw(struct buf*);
 
 #endif

@@ -8,6 +8,7 @@
 #include "timer.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "sd.h"
 
 struct cpu cpus[NCPU];
 
@@ -34,7 +35,7 @@ main()
      */
      /* TODO: Your code here. */
 
-    cprintf("main: [CPU%d] is init kernel\n", cpuid());
+    // cprintf("main: [CPU%d] is init kernel\n", cpuid());
 
     /* TODO: Use `memset` to clear the BSS section of our program. */
 
@@ -57,14 +58,13 @@ main()
     release(&alloc_once.lock);
 
     irq_init();
-    proc_init();
-    user_init();
 
     acquire(&initproc_once.lock);
     if (!initproc_once.count) {
         initproc_once.count = 1;
         proc_init();
         user_init();
+        sd_init();
     }
     release(&initproc_once.lock);
     lvbar(vectors);
