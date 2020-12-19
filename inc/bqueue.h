@@ -1,0 +1,45 @@
+#ifndef BQUEUE_H
+#define BQUEUE_H
+#include "spinlock.h"
+#include "buf.h"
+struct {
+    struct spinlock lock;
+    struct buf* head;
+    struct buf* tail;
+} bqueue;
+
+void bqueue_init()
+{
+    initlock(&bqueue.lock, "buf queue");
+    bqueue.head = 0;
+    bqueue.tail = 0;
+}
+
+void bqueue_push(struct buf* buf)
+{
+    acquire(&bqueue.lock);
+    if (buf == 0) {
+        release(&bqueue.lock);
+        return;
+    }
+    bqueue.tail->next = buf;
+    bqueue.tail = buf;
+    release(&bqueue.lock);
+    return;
+}
+
+struct buf* bqueue_pop()
+{
+    acquire(&bqueue.lock);
+    if (bqueue.head == bqueue.tail) {
+        release(&bqueue.lock);
+        return 0;
+    }
+    struct buf* ret;
+    ret = bqueue.head;
+    bqueue.head = bqueue.head->next;
+    release(&bqueue.lock);
+    return ret;
+}
+
+#endif

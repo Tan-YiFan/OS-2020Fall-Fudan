@@ -29,7 +29,6 @@ void swtch(struct context**, struct context*);
 void
 proc_init()
 {
-    /* TODO: Your code here. */
     initlock(&ptable.lock, "proc table");
     initlock(&nextpid.lock, "nextpid");
 }
@@ -44,7 +43,6 @@ static struct proc*
 proc_alloc()
 {
     struct proc* p;
-    /* TODO: Your code here. */
     int found = 0;
     acquire(&ptable.lock);
     for (p = ptable.proc;p < ptable.proc + NPROC;p++) {
@@ -108,7 +106,6 @@ user_init()
     /* for why our symbols differ from xv6, please refer https://stackoverflow.com/questions/10486116/what-does-this-gcc-error-relocation-truncated-to-fit-mean */
     extern char _binary_obj_user_initcode_start[], _binary_obj_user_initcode_size[];
 
-    /* TODO: Your code here. */
     p = proc_alloc();
 
     if (p == NULL) {
@@ -151,7 +148,6 @@ scheduler()
 
     for (;;) {
         /* Loop over process table looking for process to run. */
-        /* TODO: Your code here. */
         acquire(&ptable.lock);
         for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
             if (p->state == RUNNABLE) {
@@ -176,7 +172,6 @@ scheduler()
 void
 sched()
 {
-    /* TODO: Your code here. */
     struct proc* p = thiscpu->proc;
     if (!holding(&ptable.lock)) {
         panic("sched: not holding ptable lock");
@@ -195,7 +190,6 @@ sched()
 void
 forkret()
 {
-    /* TODO: Your code here. */
     release(&ptable.lock);
     return;
 }
@@ -209,7 +203,6 @@ void
 exit()
 {
     struct proc* p = thiscpu->proc;
-    /* TODO: Your code here. */
     /* if (p == initproc) {
         panic("exit: init process shall not exit!");
     } */
@@ -250,13 +243,39 @@ alloc_pid()
 void
 sleep(void* chan, struct spinlock* lk)
 {
-    /* TODO: Your code here. */
+    if (!holding(lk)) {
+        panic("sleep: lock not held");
+    }
+
+    // change the state of ptable, add lock
+    if (lk != &ptable.lock) {
+        acquire(&ptable.lock);
+        release(lk);
+    }
+
+    thiscpu->proc->chan = chan;
+    thiscpu->proc->state = SLEEPING;
+    sched();
+
+    // sched returns
+    thiscpu->proc->chan = 0;
+
+    if (lk != &ptable.lock) {
+        release(&ptable.lock);
+        acquire(lk);
+    }
 }
 
 /* Wake up all processes sleeping on chan. */
 void
 wakeup(void* chan)
 {
-    /* TODO: Your code here. */
+    acquire(&ptable.lock);
+    for (struct proc* p = ptable.proc; p < ptable.proc + NPROC; p++) {
+        if (p->state == SLEEPING && p->chan == chan) {
+            p->state = RUNNABLE;
+        }
+    }
+    release(&ptable.lock);
 }
 
