@@ -22,6 +22,7 @@
 
 #include "proc.h"
 #include "bqueue.h"
+#include "bcache.h"
 
 // Private functions.
 static void sd_start(struct buf* b);
@@ -509,9 +510,9 @@ sd_init()
      /* TODO: Your code here. */
 
     bqueue_init();
+    bcache_init();
     sdInit();
     assert(sdCard.init);
-    sd_test();
 
     /*
      * Read and parse 1st block (MBR) and collect whatever
@@ -522,6 +523,26 @@ sd_init()
      */
 
      /* TODO: Your code here. */
+    struct buf first_block;
+    memset(first_block.data, 0, sizeof(first_block.data));
+    first_block.blockno = 0;
+    first_block.flags = 0;
+
+    sd_start(&first_block);
+    sdWaitForInterrupt(INT_READ_RDY);
+    cprintf("%d\n", first_block.flags);
+    uint32_t* intbuf = (uint32_t*)first_block.data;
+    for (int done = 0; done < 128; )
+        intbuf[done++] = *EMMC_DATA;
+    sdWaitForInterrupt(INT_DATA_DONE);
+    // *EMMC_INTERRUPT = *EMMC_INTERRUPT;// Clear interrupt.
+    disb();
+    uint32_t partition2[4];
+    memcpy(partition2, &first_block.data[0x1CE], sizeof(partition2));
+    uint32_t first_absolute_sector = partition2[2];
+    uint32_t numbers_of_sectors = partition2[3];
+    cprintf("- sd init: LBA of first absolute sector in the partition is %x\n", first_absolute_sector);
+    cprintf("- sd init: Number of sectors in partition is %x\n", numbers_of_sectors);
 }
 
 static void
@@ -541,7 +562,7 @@ sd_start(struct buf* b)
     int bno = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
     int write = b->flags & B_DIRTY;
 
-    cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
+    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
@@ -590,7 +611,7 @@ sd_intr()
         // FIXME: Restart when failed
         asserts((i & INT_DATA_DONE) || (i & INT_READ_RDY), "unexpected sd intr");
 
-        *EMMC_INTERRUPT = i; cprintf("sd receive redundent interrupt 0x%x, omitted.\n", *EMMC_INTERRUPT);// Clear interrupt.
+        *EMMC_INTERRUPT = i;// Clear interrupt.
         disb();
 
         struct buf *b = list_front(&sdque);
@@ -628,7 +649,7 @@ sd_intr()
         // FIXME: Restart when failed
         asserts((i & INT_DATA_DONE) || (i & INT_READ_RDY), "unexpected sd intr");
 
-        *EMMC_INTERRUPT = i; cprintf("sd receive redundent interrupt 0x%x, omitted.\n", *EMMC_INTERRUPT);// Clear interrupt.
+        *EMMC_INTERRUPT = i;// Clear interrupt.
         disb();
 
         struct buf* b = bqueue_front();
@@ -656,6 +677,7 @@ sd_intr()
         }
     }
     release(&bqueue.lock);
+    yield();
 }
 
 /*
@@ -667,16 +689,67 @@ void
 sdrw(struct buf* b)
 {
     /* TODO: Your code here. */
+#include "proc.h"
+    struct buf* c;
+    int i = b->blockno % CACHE_SZ;
+    int read = (b->flags == 0);
+    if (!b->flags) { // read: cache hit
+
+        acquire(&bcache[i].lock);
+        if (b->blockno == bcache[i].blocknum && bcache[i].valid) {
+            memcpy(b->data, bcache[i].data, sizeof(b->data));
+            b->flags |= B_VALID;
+            release(&bcache[i].lock);
+            return;
+        }
+        release(&bcache[i].lock);
+    }
+    else if (b->flags & B_DIRTY) { // write
+        acquire(&bcache[i].lock);
+        bcache[i].blocknum = b->blockno;
+        memcpy(bcache[i].data, b->data, sizeof(b->data));
+        bcache[i].valid = 1;
+        release(&bcache[i].lock);
+    }
+
     acquire(&bqueue.lock);
-    sd_start(b);
+    if (bqueue_empty()) {
+        c = bqueue_push(b);
+        sd_start(c);
+        // bqueue_pop(b);
+    }
+    else {
+        c = bqueue_push(b);
+    }
+    // sleep(b, &bqueue.lock);
+    if (bqueue.head == (bqueue.tail + 1) % MAX_Q) { // full
+        sleep(c, &bqueue.lock);
+        if (read) {
+            memcpy(b, c, sizeof(*b));
+        }
+    }
+    else if (read) {
+        sleep(c, &bqueue.lock);
+        memcpy(b, c, sizeof(*b));
+    }
+
     release(&bqueue.lock);
-    if (b->flags | B_DIRTY) { // write
-        b->flags &= ~B_DIRTY;
-        b->flags |= B_VALID;
+    if (read) {
+        acquire(&bcache[i].lock);
+        bcache[i].blocknum = b->blockno;
+        memcpy(bcache[i].data, b->data, sizeof(b->data));
+        bcache[i].valid = 1;
+        release(&bcache[i].lock);
     }
-    else if (~(b->flags & B_VALID)) {
-        b->flags |= B_VALID;
-    }
+
+
+    /*     if (b->flags | B_DIRTY) { // write
+            b->flags &= ~B_DIRTY;
+            b->flags |= B_VALID;
+        }
+        else if (~(b->flags & B_VALID)) {
+            b->flags |= B_VALID;
+        } */
 }
 
 /* SD card test and benchmark. */
@@ -692,6 +765,10 @@ sd_test()
     cprintf("- sd test: begin nblocks %d\n", n);
 
     cprintf("- sd check rw...\n");
+
+    disb();
+    t = timestamp();
+    disb();
     // Read/write test
     for (int i = 1; i < n; i++) {
         // Backup.
@@ -716,7 +793,11 @@ sd_test()
         b[0].flags = B_DIRTY;
         sdrw(&b[0]);
     }
-
+    disb();
+    t = timestamp() - t;
+    disb();
+    cprintf("- read/write %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
+        n * BSIZE * 4, mb * 4, t, mb * 4 * f / t, (mb * 4 * f * 10 / t) % 10);
     // Read benchmark
     disb();
     t = timestamp();

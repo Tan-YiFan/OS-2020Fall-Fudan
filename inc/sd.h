@@ -22,5 +22,5 @@
 void sd_init();
 void sd_intr();
 void sdrw(struct buf*);
-
+void sd_test();
 #endif

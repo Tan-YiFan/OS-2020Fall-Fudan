@@ -14,8 +14,6 @@ struct buf {
     uint8_t data[BSIZE];
 
     /* TODO: Your code here. */
-    struct buf* next;
-
 };
 
 #endif

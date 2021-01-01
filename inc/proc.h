@@ -70,4 +70,8 @@ void yield();
 void wakeup(void*);
 int alloc_pid();
 
+struct spinlock;
+void sleep(void*, struct spinlock*);
+void wakeup(void*);
+
 #endif

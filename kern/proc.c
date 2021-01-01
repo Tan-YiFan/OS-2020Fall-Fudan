@@ -154,11 +154,12 @@ scheduler()
                 uvm_switch(p);
                 c->proc = p;
                 p->state = RUNNING;
-                cprintf("scheduler: process id %d takes the cpu %d\n", p->pid, cpuid());
+                // cprintf("scheduler: process id %d takes the cpu %d\n", p->pid, cpuid());
                 swtch(&c->scheduler, p->context);
 
                 // back
                 c->proc = NULL;
+                break;
             }
 
         }
@@ -190,7 +191,14 @@ sched()
 void
 forkret()
 {
+
     release(&ptable.lock);
+#include "sd.h"
+    if (thiscpu->proc->pid == 1) {
+        sd_test();
+    }
+
+    // sd_test();
     return;
 }
 
@@ -221,7 +229,7 @@ yield()
     acquire(&ptable.lock);
     struct proc* p = thiscpu->proc;
     p->state = RUNNABLE;
-    cprintf("yield: process id %d gives up the cpu %d\n", p->pid, cpuid());
+    // cprintf("yield: process id %d gives up the cpu %d\n", p->pid, cpuid());
     sched();
     release(&ptable.lock);
 }
