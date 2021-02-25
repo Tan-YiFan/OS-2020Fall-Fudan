@@ -10,7 +10,7 @@ _start:
      * See https://github.com/raspberrypi/tools/blob/master/armstubs/armstub8.S
      * which has been incorporated in start.elf (or bootcode.bin ?)
      */
-    adr     x0, mp_start
+/*     adr     x0, mp_start
     mov     x1, #1
     mov     x2, #2
     mov     x3, #3
@@ -22,7 +22,7 @@ _start:
     dsb     sy
     isb
 
-    sev
+    sev */
 
 mp_start:
     /* Get current exception level by CurrentEL[3:2]. */

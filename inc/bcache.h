@@ -11,12 +11,12 @@ struct {
     int blocknum;
     uint8_t data[BSIZE];
     struct spinlock lock;
-} bcache[CACHE_SZ];
+} bcache_lo[CACHE_SZ];
 
 static void bcache_init() {
     for (int i = 0; i < CACHE_SZ; i++) {
-        bcache[i].valid = 0;
-        initlock(&bcache[i].lock, "bcache");
+        bcache_lo[i].valid = 0;
+        initlock(&bcache_lo[i].lock, "bcache");
     }
 }
 

@@ -9,6 +9,8 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "sd.h"
+#include "file.h"
+#include "fs.h"
 
 struct cpu cpus[NCPU];
 
@@ -64,11 +66,14 @@ main()
         initproc_once.count = 1;
         proc_init();
         user_init();
-        user_init();
-        user_init();
-        user_init();
-        user_init();
+        user_idle_init();
+        // user_init();
+        // user_init();
+        // user_init();
+        // user_init();
         sd_init();
+        binit();
+        fileinit();
     }
     release(&initproc_once.lock);
     lvbar(vectors);

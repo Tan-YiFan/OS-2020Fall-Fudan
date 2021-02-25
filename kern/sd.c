@@ -562,7 +562,7 @@ sd_start(struct buf* b)
     int bno = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
     int write = b->flags & B_DIRTY;
 
-    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
+    cdebugf("- sd start: cpu %d, flag 0x%x, bno %x, write=%d\n", cpuid(), b->flags, bno, write);
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
@@ -685,31 +685,32 @@ sd_intr()
  * If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
  * Else if B_VALID is not set, read buf from disk, set B_VALID.
  */
+#include "proc.h"
 void
 sdrw(struct buf* b)
 {
     /* TODO: Your code here. */
-#include "proc.h"
+
     struct buf* c;
     int i = b->blockno % CACHE_SZ;
     int read = (b->flags == 0);
     if (!b->flags) { // read: cache hit
 
-        acquire(&bcache[i].lock);
-        if (b->blockno == bcache[i].blocknum && bcache[i].valid) {
-            memcpy(b->data, bcache[i].data, sizeof(b->data));
+        acquire(&bcache_lo[i].lock);
+        if (b->blockno == bcache_lo[i].blocknum && bcache_lo[i].valid) {
+            memcpy(b->data, bcache_lo[i].data, sizeof(b->data));
             b->flags |= B_VALID;
-            release(&bcache[i].lock);
+            release(&bcache_lo[i].lock);
             return;
         }
-        release(&bcache[i].lock);
+        release(&bcache_lo[i].lock);
     }
     else if (b->flags & B_DIRTY) { // write
-        acquire(&bcache[i].lock);
-        bcache[i].blocknum = b->blockno;
-        memcpy(bcache[i].data, b->data, sizeof(b->data));
-        bcache[i].valid = 1;
-        release(&bcache[i].lock);
+        acquire(&bcache_lo[i].lock);
+        bcache_lo[i].blocknum = b->blockno;
+        memcpy(bcache_lo[i].data, b->data, sizeof(b->data));
+        bcache_lo[i].valid = 1;
+        release(&bcache_lo[i].lock);
     }
 
     acquire(&bqueue.lock);
@@ -725,21 +726,25 @@ sdrw(struct buf* b)
     if (bqueue.head == (bqueue.tail + 1) % MAX_Q) { // full
         sleep(c, &bqueue.lock);
         if (read) {
-            memcpy(b, c, sizeof(*b));
+            // memcpy(b, c, sizeof(*b));
+            memcpy(b->data, c->data, sizeof(b->data));
+            b->flags = c->flags;
         }
     }
     else if (read) {
         sleep(c, &bqueue.lock);
-        memcpy(b, c, sizeof(*b));
+        // memcpy(b, c, sizeof(*b));
+        memcpy(b->data, c->data, sizeof(b->data));
+        b->flags = c->flags;
     }
 
     release(&bqueue.lock);
     if (read) {
-        acquire(&bcache[i].lock);
-        bcache[i].blocknum = b->blockno;
-        memcpy(bcache[i].data, b->data, sizeof(b->data));
-        bcache[i].valid = 1;
-        release(&bcache[i].lock);
+        acquire(&bcache_lo[i].lock);
+        bcache_lo[i].blocknum = b->blockno;
+        memcpy(bcache_lo[i].data, b->data, sizeof(b->data));
+        bcache_lo[i].valid = 1;
+        release(&bcache_lo[i].lock);
     }
 
 

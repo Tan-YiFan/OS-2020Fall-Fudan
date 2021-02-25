@@ -1,7 +1,9 @@
-#include "syscall.h"
+// #include "syscall.h"
+#include <bits/syscall.h>
 #include "string.h"
 #include "proc.h"
 #include "console.h"
+#include "file.h"
 
 /*
  * User code makes a system call with SVC, system call number in r0.
@@ -63,7 +65,7 @@ argint(int n, uint64_t* ip)
 
     struct proc* proc = thiscpu->proc;
 
-    // *ip = *(&proc->tf->r1 + n);
+    *ip = *(&proc->tf->r0 + n);
 
     return 0;
 }
@@ -110,8 +112,8 @@ argstr(int n, char** pp)
     return fetchstr(addr, pp);
 }
 
-extern int sys_exec();
-extern int sys_exit();
+// extern int sys_exec();
+// extern int sys_exit();
 
 /*
  * in ARM, parameters to main (argc, argv) are passed in r0 and r1
@@ -119,27 +121,90 @@ extern int sys_exit();
  * anyway does not expect us to return anything).
  */
  /* syscall handler */
-int
-syscall()
-{
-    struct proc* proc = thiscpu->proc;
-    /*
-     * Determine the cause and then jump to the corresponding handle
-     * the handler may look like
-     * switch (syscall number) {
-     *      SYS_XXX:
-     *          return sys_XXX();
-     *      SYS_YYY:
-     *          return sys_YYY();
-     *      default:
-     *          panic("syscall: unknown syscall %d\n", syscall number)
-     * }
-     */
-     /* TODO: Your code here. */
+// int
+// syscall()
+// {
+//     struct proc* proc = thiscpu->proc;
+//     /*
+//      * Determine the cause and then jump to the corresponding handle
+//      * the handler may look like
+//      * switch (syscall number) {
+//      *      SYS_XXX:
+//      *          return sys_XXX();
+//      *      SYS_YYY:
+//      *          return sys_YYY();
+//      *      default:
+//      *          panic("syscall: unknown syscall %d\n", syscall number)
+//      * }
+//      */
+//      /* TODO: Your code here. */
 
+//     int sysno = proc->tf->r0;
+//     switch (sysno) {
+//     case :
+        
+//     default:
+//         panic("Unexpected syscall #%d\n", sysno);
+//     }
+    
+//     return 0;
+// }
+int sys_gettid()
+{
+    return thisproc()->pid;
+}
+int sys_ioctl()
+{
+    if (thisproc()->tf->r1 == 0x5413) {
+        return 0;
+    } else {
+        panic("toctl unimplemented\n");
+    }
     return 0;
 }
-
+int sys_sigprocmask() { return 0; }
+int sys_default()
+{
+    do
+    {
+        // sys_yield();
+        cdebugf("Unexpected syscall #%d\n", thisproc()->tf->r8);
+    } while (0);
+    return 0;
+}
+#define NR_SYSCALL 512
+const int (*syscall_table[NR_SYSCALL])() = {
+    [0 ... NR_SYSCALL - 1] = sys_default,
+    [SYS_set_tid_address] = sys_gettid,
+    [SYS_ioctl] = sys_ioctl,
+    [SYS_gettid] = sys_gettid,
+    [SYS_rt_sigprocmask] = sys_sigprocmask,
+    [SYS_brk] = (const int*)sys_brk,
+    [SYS_execve] = sys_exec,
+    [SYS_sched_yield] = sys_yield,
+    [SYS_clone] = sys_clone,
+    [SYS_wait4] = sys_wait4,
+    [SYS_exit_group] = sys_exit,
+    [SYS_exit] = sys_exit,
+    [SYS_dup] = sys_dup,
+    [SYS_chdir] = sys_chdir,
+    [SYS_fstat] = sys_fstat,
+    [SYS_newfstatat] = sys_fstatat,
+    [SYS_mkdirat] = sys_mkdirat,
+    [SYS_mknodat] = sys_mknodat,
+    [SYS_openat] = sys_openat,
+    [SYS_writev] = sys_writev,
+    [SYS_read] = (const int*)sys_read,
+    [SYS_write] = sys_write,
+    [SYS_close] = sys_close
+};
+int syscall1(struct trapframe* tf)
+{
+    thisproc()->tf = tf;
+    int sysno = tf->r8;
+    tf->r0 = syscall_table[sysno]();
+    return tf->r0;
+}
 /* TODO: If you want to use musl
  *
  * 1. Remove inc/syscall.h and inc/syscallno.h

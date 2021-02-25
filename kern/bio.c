@@ -40,6 +40,14 @@ void
 binit()
 {
     /* TODO: Your code here. */
+    initlock(&bcache.lock, "bcache");
+    init_buf_head(&bcache.head);
+    
+    for (struct buf* b = bcache.buf; b < bcache.buf + NBUF; b++) {
+        b->dev = -1;
+        buf_add(&bcache.head, b);
+        initsleeplock(&b->lock, "buffer");
+    }
 }
 
 /*
@@ -51,7 +59,34 @@ static struct buf *
 bget(uint32_t dev, uint32_t blockno)
 {
     /* TODO: Your code here. */
+    acquire(&bcache.lock);
+    
+    loop:
+    for (struct buf* b = bcache.head.next; b != &bcache.head; b = b->next) {
+        if (b->dev == dev && b->blockno == blockno) {
+            if (!holdingsleep(&b->lock)) {
+                acquiresleep(&b->lock);
+                release(&bcache.lock);
+                return b;
+            }
+            sleep(b, &bcache.lock);
+            goto loop;
+        }
+    }
+    
+    // not hit
+    for (struct buf* b = bcache.head.prev; b != &bcache.head; b = b->prev) {
+        if ((!holdingsleep(&b->lock)) && (b->flags & B_DIRTY) == 0) {
+            b->dev = dev;
+            b->blockno = blockno;
+            acquiresleep(&b->lock);
+            b->flags = 0;
+            release(&bcache.lock);
+            return b;
+        }
+    }
 
+    panic("bget: no buffers");
 }
 
 /* Return a locked buf with the contents of the indicated block. */
@@ -59,6 +94,13 @@ struct buf *
 bread(uint32_t dev, uint32_t blockno)
 {
     /* TODO: Your code here. */
+    struct buf *b = bget(dev, blockno + MBR_BASE);
+
+    if ((b->flags & B_VALID) == 0) {
+        sdrw(b);
+    }
+
+    return b;
 }
 
 /* Write b's contents to disk. Must be locked. */
@@ -66,6 +108,12 @@ void
 bwrite(struct buf *b)
 {
     /* TODO: Your code here. */
+    if (!holdingsleep(&b->lock)) {
+        panic("bwrite");
+    }
+
+    b->flags |= B_DIRTY;
+    sdrw(b);
 }
 
 /*
@@ -76,5 +124,16 @@ void
 brelse(struct buf *b)
 {
     /* TODO: Your code here. */
+    acquire(&bcache.lock);
+    if (!holdingsleep(&b->lock)) {
+        panic("brelse\n");
+    } 
+    
+    buf_del(b);
+    buf_add(&bcache.head, b);
+    
+    releasesleep(&b->lock);
+    wakeup(b);
+    release(&bcache.lock);
 }
 

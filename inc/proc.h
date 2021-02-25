@@ -74,6 +74,7 @@ thisproc()
 
 void proc_init();
 void user_init();
+void user_idle_init();
 void scheduler();
 
 void yield();
@@ -87,5 +88,13 @@ void sleep(void*, struct spinlock*);
 void wakeup(void*);
 int fork();
 int wait();
+
+int sys_yield();
+size_t sys_brk();
+int sys_clone();
+int sys_wait4();
+int sys_exit();
+
+int growproc(int);
 
 #endif

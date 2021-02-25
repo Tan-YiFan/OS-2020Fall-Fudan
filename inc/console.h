@@ -6,7 +6,8 @@
 void console_init();
 void console_intr(int (*getc)());
 void cgetchar(int c);
-void cprintf(const char *fmt, ...);
+void cprintf(const char* fmt, ...);
+void cdebugf(const char *fmt, ...);
 void panic(const char *fmt, ...);
 
 

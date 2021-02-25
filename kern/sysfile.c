@@ -17,6 +17,8 @@
 #include "fs.h"
 #include "file.h"
 
+#include "syscall.h"
+
 struct iovec {
     void  *iov_base;    /* Starting address. */
     size_t iov_len;     /* Number of bytes to transfer. */
@@ -51,24 +53,62 @@ static int
 fdalloc(struct file *f)
 {
     /* TODO: Your code here. */
+    for (int i = 0; i < NOFILE; i++) {
+        if (thisproc()->ofile[i] == 0) {
+            thisproc()->ofile[i] = f;
+            return i;
+        } 
+    }
+    return -1;
 }
 
 int
 sys_dup()
 {
     /* TODO: Your code here. */
+    struct file* f;
+    if (argfd(0, 0, &f) < 0) {
+        return -1;
+    }
+
+    int fd = fdalloc(f);
+    if (fd < 0) {
+        return -1;
+    }
+    filedup(f);
+    return fd;
 }
 
 ssize_t
 sys_read()
 {
     /* TODO: Your code here. */
+    struct file* f;
+    char* addr;
+    ssize_t n;
+
+    if (argfd(0, 0, &f) < 0 ||
+        argint(2, &n) < 0 ||
+        argptr(1, &addr, n) < 0) {
+        return -1;
+    } 
+    return fileread(f, addr, n);
 }
 
 ssize_t
 sys_write()
 {
     /* TODO: Your code here. */
+    struct file* f;
+    char* addr;
+    ssize_t n;
+
+    if (argfd(0, 0, &f) < 0 ||
+        argint(2, &n) < 0 ||
+        argptr(1, &addr, n) < 0) {
+        return -1;
+    } 
+    return filewrite(f, addr, n);
 }
 
 
@@ -99,18 +139,55 @@ sys_writev()
      * return tot;
      * ```
      */
+
+    struct file *f;
+    int64_t fd, iovcnt;
+    struct iovec *iov;
+    if (argfd(0, &fd, &f) < 0 ||
+        argint(2, &iovcnt) < 0 ||
+        argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0) {
+        return -1;
+    }
+    size_t tot = 0;
+    for (struct iovec* p = iov; p < iov + iovcnt; p++) {
+        if (0) {
+            return -1;
+        } 
+        tot += filewrite(f, p->iov_base, p->iov_len);
+    }
+    return tot;
 }
 
 int
 sys_close()
 {
     /* TODO: Your code here. */
+    struct file *f;
+    int fd;
+    
+    if(argfd(0, &fd, &f) < 0) {
+        return -1;
+    }
+
+    thisproc()->ofile[fd] = 0;
+    fileclose(f);
+
+    return 0;
 }
 
 int
 sys_fstat()
 {
     /* TODO: Your code here. */
+    struct file *f;
+    struct stat *st;
+
+    if (argfd(0, 0, &f) < 0 ||
+        argptr(1, (void*)&st, sizeof(*st)) < 0) {
+        return -1;
+    }
+
+    return filestat(f, st);
 }
 
 int
@@ -149,10 +226,60 @@ sys_fstatat()
     return 0;
 }
 
-static struct inode *
+struct inode *
 create(char *path, short type, short major, short minor)
 {
     /* TODO: Your code here. */
+    uint32_t off;
+    struct inode *ip, *dp;
+    char name[DIRSIZ];
+
+    if((dp = nameiparent(path, name)) == 0) {
+        return 0;
+    }
+
+    ilock(dp);
+
+    if((ip = dirlookup(dp, name, (size_t*)&off)) != 0){
+        iunlockput(dp);
+        ilock(ip);
+
+        if(type == T_FILE && ip->type == T_FILE) {
+            return ip;
+        }
+
+        iunlockput(ip);
+
+        return 0;
+    }
+
+    if((ip = ialloc(dp->dev, type)) == 0) {
+        panic("create: ialloc");
+    }
+
+    ilock(ip);
+    ip->major = major;
+    ip->minor = minor;
+    ip->nlink = 1;
+    iupdate(ip);
+
+    if(type == T_DIR){  // Create . and .. entries.
+        dp->nlink++;  // for ".."
+        iupdate(dp);
+
+        // No ip->nlink++ for ".": avoid cyclic ref count.
+        if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0) {
+            panic("create dots");
+        }
+    }
+
+    if(dirlink(dp, name, ip->inum) < 0) {
+        panic("create: dirlink");
+    }
+
+    iunlockput(dp);
+
+    return ip;
 }
 
 int
@@ -166,6 +293,7 @@ sys_openat()
     if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &omode) < 0)
         return -1;
 
+    // cprintf("%lld, %s, %lld\n", dirfd, path, omode);
     if (dirfd != AT_FDCWD) {
         cprintf("sys_openat: dirfd unimplemented\n");
         return -1;
@@ -297,5 +425,52 @@ int
 sys_exec()
 {
     /* TODO: Your code here. */
+    char* path;
+    char* argv[1 << 6];
+    // char* envp[1 << 6];
+    uint64_t uargv;
+    if (argstr(0, &path) < 0 ||
+        argint(1, (long*)&uargv) < 0) {
+        return -1;
+    }
+    memset(argv, 0, sizeof(argv));
+    uint64_t uarg;
+    for (int i = 0; i <= (1 << 6); i++) {
+        if (i == (1 << 6)) {
+            return -1;
+        }
+        if (fetchint(uargv + (i << 3), (long*)&uarg) < 0) {
+            return -1;
+            
+        }
+        if (uarg == 0) {
+            argv[i] = 0;
+            break;
+        }
+
+        if (fetchstr(uarg, &argv[i]) < 0) {
+            return -1;
+        } 
+    }
+    /* for (int i = 0; i <= (1 << 6); i++) {
+        if (i == (1 << 6)) {
+            return -1;
+        }
+        if (fetchint(uargv + (i << 3), (long*)&uarg) < 0) {
+            return -1;
+            
+        }
+        if (uarg == 0) {
+            envp[i] = 0;
+            break;
+        }
+
+        if (fetchstr(uarg, &envp[i]) < 0) {
+            return -1;
+        } 
+    } */
+    
+
+    return execve(path, argv, (char**)0);
 }
 

@@ -95,5 +95,8 @@
                          TCR_ORGN0_IRGN0    | TCR_ORGN1_IRGN1   |   \
                          TCR_IPS)
 
+// size of two-level page tables
+#define UADDR_BITS	28					// maximum user-application memory, 256MB
+#define UADDR_SZ	(1 << UADDR_BITS)			// maximum user address space size
 
 #endif

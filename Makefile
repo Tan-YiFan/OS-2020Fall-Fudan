@@ -32,8 +32,8 @@ COPY := cp -f
 # link the libgcc.a for __aeabi_idiv. ARM has no native support for div
 LIBS = $(LIBGCC)
 
-CORTEX_A53_FLAGS := -mno-outline-atomics -mcpu=cortex-a53 -mtune=cortex-a53
-CFLAGS := -Wall -g -O2 \
+CORTEX_A53_FLAGS := -mcpu=cortex-a53 -mtune=cortex-a53
+CFLAGS := -Wall -g \
           -fno-pie -fno-pic -fno-stack-protector \
           -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
@@ -130,5 +130,5 @@ init:
 
 clean:
 	$(MAKE) -C user clean
-	$(MAKE) -C libc clean
+	# $(MAKE) -C libc clean
 	rm -rf $(BUILD_DIR)

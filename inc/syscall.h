@@ -8,6 +8,6 @@ int argstr(int, char **);
 int argint(int, uint64_t *);
 int fetchstr(uint64_t, char **);
 
-int syscall();
+// int syscall();
 
 #endif

@@ -77,4 +77,6 @@ struct dirent {
 #define T_FILE 2   // File
 #define T_DEV  3   // Device
 
+#define MBR_BASE 0x20800
+void test_file_system();
 #endif

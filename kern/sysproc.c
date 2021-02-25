@@ -15,6 +15,19 @@ size_t
 sys_brk()
 {
     /* TODO: Your code here. */
+    uint64_t n;
+
+    if(argint(0, &n) < 0) {
+        return -1;
+    }
+
+    size_t addr = thisproc()->sz;
+
+    if(growproc(n) < 0) {
+        return -1;
+    }
+
+    return addr;
 }
 
 int
@@ -46,8 +59,16 @@ sys_wait4()
 
     if (pid != -1 || wstatus != 0 || opt != 0 || rusage != 0) {
         cprintf("sys_wait4: unimplemented. pid %d, wstatus 0x%p, opt 0x%x, rusage 0x%p\n", pid, wstatus, opt, rusage);
+        while (1) {
+            
+        }
         return -1;
     }
 
     return wait();
+}
+
+int sys_exit()
+{
+    exit();
 }

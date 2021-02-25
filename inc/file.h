@@ -47,7 +47,8 @@ struct devsw {
 extern struct devsw devsw[];
 
 void            readsb(int, struct superblock *);
-int             dirlink(struct inode *, char *, uint32_t);
+int             dirlink(struct inode*, char*, uint32_t);
+int             dirunlink(struct inode *, char *, uint32_t);
 struct inode *  dirlookup(struct inode *, char *, size_t *);
 struct inode *  ialloc(uint32_t, short);
 struct inode *  idup(struct inode *);
@@ -64,6 +65,7 @@ void            stati(struct inode *, struct stat *);
 ssize_t         readi(struct inode *, char *, size_t, size_t);
 ssize_t         writei(struct inode *, char *, size_t, size_t);
 
+void fileinit();
 struct file *   filealloc();
 struct file *   filedup(struct file *f);
 void            fileclose(struct file *f);
@@ -71,4 +73,18 @@ int             filestat(struct file *f, struct stat *st);
 ssize_t         fileread(struct file *f, char *addr, ssize_t n);
 ssize_t         filewrite(struct file *f, char *addr, ssize_t n);
 
+int sys_dup();
+ssize_t sys_read();
+ssize_t sys_write();
+ssize_t sys_writev();
+int sys_close();
+int sys_fstat();
+int sys_fstatat();
+int sys_openat();
+int sys_mkdirat();
+int sys_mknodat();
+int sys_chdir();
+int sys_exec();
+struct inode*
+    create(char* path, short type, short major, short minor);
 #endif

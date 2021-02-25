@@ -5,6 +5,7 @@
 #include "fs.h"
 #include "buf.h"
 #include "string.h"
+#include "file.h"
 
 /* Simple logging that allows concurrent FS system calls.
  *
@@ -57,6 +58,16 @@ void
 initlog(int dev)
 {
     /* TODO: Your code here. */
+    if (sizeof(struct logheader) > BSIZE) {
+        panic("initlog: too big logheader\n");
+    }
+    initlock(&log.lock, "log");
+    struct superblock sb;
+    readsb(dev, &sb);
+    log.start = sb.size - sb.nlog;
+    log.size = sb.nlog;
+    log.dev = dev;
+    recover_from_log();
 }
 
 /* Copy committed blocks from log to their home location. */
@@ -64,6 +75,15 @@ static void
 install_trans()
 {
     /* TODO: Your code here. */
+    for (int tail = 0; tail < log.lh.n; tail++) {
+        struct buf* lbuf = bread(log.dev, log.start + tail + 1);
+        struct buf* dbuf = bread(log.dev, log.lh.block[tail]);
+
+        memmove(dbuf->data, lbuf->data, BSIZE);
+        bwrite(dbuf);
+        brelse(lbuf);
+        brelse(dbuf);
+    }
 }
 
 /* Read the log header from disk into the in-memory log header. */
@@ -71,6 +91,14 @@ static void
 read_head()
 {
     /* TODO: Your code here. */
+    struct buf* b = bread(log.dev, log.start);
+    struct logheader* lh = (struct logheader*)b->data;
+    log.lh.n = lh->n;
+
+    for (int i = 0; i < log.lh.n; i++) {
+        log.lh.block[i] = lh->block[i];
+    }
+    brelse(b);
 }
 
 /*
@@ -96,6 +124,10 @@ static void
 recover_from_log()
 {
     /* TODO: Your code here. */
+    read_head();
+    install_trans();
+    log.lh.n = 0;
+    write_head();
 }
 
 /* Called at the start of each FS system call. */
@@ -103,6 +135,19 @@ void
 begin_op()
 {
     /* TODO: Your code here. */
+    acquire(&log.lock);
+
+    while (1) {
+        if (log.committing) {
+            sleep(&log, &log.lock);
+        } else if (log.lh.n + (log.outstanding + 1) * MAXOPBLOCKS > LOGSIZE) {
+            sleep(&log, &log.lock);
+        } else {
+            log.outstanding++;
+            break;
+        }
+    }
+    release(&log.lock);
 }
 
 /*
@@ -113,6 +158,28 @@ void
 end_op()
 {
     /* TODO: Your code here. */
+    acquire(&log.lock);
+
+    if (log.committing) {
+        panic("end_op: log.commiting\n");
+    }
+    log.outstanding--;
+    int do_commit;
+    if (log.outstanding == 0) {
+        do_commit = 1;
+        log.committing = 1;
+    } else {
+        wakeup(&log);
+    }
+    release(&log.lock);
+
+    if (do_commit) {
+        commit();
+        acquire(&log.lock);
+        log.committing = 0;
+        wakeup(&log);
+        release(&log.lock);
+    } 
 }
 
 /* Copy modified blocks from cache to log. */
@@ -120,12 +187,28 @@ static void
 write_log()
 {
     /* TODO: Your code here. */
+    for (int tail = 0; tail < log.lh.n; tail++) {
+        struct buf* to = bread(log.dev, log.start + tail + 1);
+        struct buf* from = bread(log.dev, log.lh.block[tail]);
+
+        memmove(to->data, from->data, BSIZE);
+        bwrite(to);
+        brelse(from);
+        brelse(to);
+    }
 }
 
 static void
 commit()
 {
     /* TODO: Your code here. */
+    if (log.lh.n > 0) {
+        write_log();
+        write_head();
+        install_trans();
+        log.lh.n = 0;
+        write_head();
+    } 
 }
 
 /* Caller has modified b->data and is done with the buffer.
@@ -142,5 +225,23 @@ void
 log_write(struct buf *b)
 {
     /* TODO: Your code here. */
+
+    acquire(&log.lock);
+    int i;
+    for (i = 0; i < log.lh.n; i++) {
+        if (log.lh.block[i] == b->blockno - MBR_BASE)   // log absorbtion
+            break;
+    }
+    log.lh.block[i] = b->blockno - MBR_BASE;
+    // struct buf* bp = bread(b->dev, log.start + i + 1);
+    // memmove(bp->data, b->data, BSIZE);
+    // bwrite(bp);
+    // brelse(bp);
+    if (i == log.lh.n) {  // Add new block to log?
+        // bpin(b);
+        log.lh.n++;
+    }
+    release(&log.lock);
+    b->flags |= B_DIRTY;
 }
 

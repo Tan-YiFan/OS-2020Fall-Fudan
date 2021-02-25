@@ -6,7 +6,9 @@
 #include "string.h"
 #include "vm.h"
 #include "mmu.h"
-
+#include "file.h"
+#include "memlayout.h"
+#include "string.h"
 struct {
     struct proc proc[NPROC];
     struct spinlock lock;
@@ -128,6 +130,7 @@ user_init()
 
     p->state = RUNNABLE;
     p->sz = PGSIZE;
+    p->cwd = namei("/");
 }
 
 /*
@@ -159,7 +162,7 @@ scheduler()
 
                 // back
                 c->proc = NULL;
-                break;
+                // break;
             }
 
         }
@@ -188,20 +191,36 @@ sched()
 /*
  * A fork child will first swtch here, and then "return" to user space.
  */
+#include "log.h"
+#include "fs.h"
+#include "sd.h"
 void
 forkret()
 {
 
+    static int first = 1;
     release(&ptable.lock);
-#include "sd.h"
-    if (thiscpu->proc->pid == 1) {
-        sd_test();
-    }
+    
 
+    if (first) {
+        first = 0;
+
+        initlog(ROOTDEV);
+    } 
+    if (thiscpu->proc->pid == 1) {
+        // sd_test();
+        test_file_system();
+    }
     // sd_test();
     return;
 }
-
+void wakeup_withlock(void* chan) {
+    for (struct proc* p = ptable.proc; p < ptable.proc + NPROC; p++) {
+        if (p->state == SLEEPING && p->chan == chan) {
+            p->state = RUNNABLE;
+        }
+    }
+}
 /*
  * Exit the current process.  Does not return.
  * An exited process remains in the zombie state
@@ -211,11 +230,28 @@ void
 exit()
 {
     struct proc* p = thiscpu->proc;
-    /* if (p == initproc) {
+    if (p == initproc) {
         panic("exit: init process shall not exit!");
-    } */
+    }
 
+    for(int fd = 0; fd < NOFILE; fd++){
+        if(thisproc()->ofile[fd]){
+            fileclose(thisproc()->ofile[fd]);
+            thisproc()->ofile[fd] = 0;
+        }
+    }
+    iput(thisproc()->cwd);
+    thisproc()->cwd = 0;
     acquire(&ptable.lock);
+    wakeup_withlock(p->parent);
+    for (struct proc* p = ptable.proc;p < ptable.proc + NPROC; p++) {
+        if (p->parent == thisproc()) {
+            p->parent = initproc;
+            if (p->state == ZOMBIE) {
+                wakeup_withlock(p->parent);
+            } 
+        } 
+    }
     p->state = ZOMBIE;
     sched();
 
@@ -287,12 +323,6 @@ wakeup(void* chan)
     release(&ptable.lock);
 }
 
-/* Give up CPU. */
-void
-yield()
-{
-    /* TODO: Your code here. */
-}
 
 /*
  * Create a new process copying p as the parent.
@@ -303,6 +333,39 @@ int
 fork()
 {
     /* TODO: Your code here. */
+    struct proc* p = proc_alloc();
+    if (p == 0) {
+        return -1;
+    } 
+    
+    // uvm copy
+    p->pgdir = copyuvm(thisproc()->pgdir, thisproc()->sz);
+    if (p->pgdir == 0) {
+        kfree(p->kstack);
+        p->kstack = 0;
+        p->state = UNUSED;
+        return -1;
+    } 
+    
+    p->sz = thisproc()->sz;
+    // *(p->tf) = *(thisproc()->tf);
+    memcpy(p->tf, thisproc()->tf, sizeof(*p->tf));
+    p->tf->r0 = 0;
+    p->parent = thisproc();
+    
+    
+    
+    // file descriptor
+    for (int i = 0; i < NOFILE; i++) {
+        if (thisproc()->ofile[i]) {
+            p->ofile[i] = filedup(thisproc()->ofile[i]);
+        } 
+    }
+    
+    p->cwd = idup(thisproc()->cwd);
+    p->state = RUNNABLE;
+    
+    return p->pid;
 }
 
 /*
@@ -313,6 +376,34 @@ int
 wait()
 {
     /* TODO: Your code here. */
+    acquire(&ptable.lock);
+    while (1) {
+        int havekids = 0;
+        for (struct proc* p = ptable.proc; p < ptable.proc + NPROC; p++) {
+            if (p->parent != thisproc()) {
+                continue;
+            } 
+            havekids = 1;
+            if (p->state == ZOMBIE) {
+                int pid = p->pid;
+                
+                p->killed = 0;
+                p->state = UNUSED;
+                p->pid = 0;
+                p->parent = 0;
+                vm_free(p->pgdir, 3);
+                kfree(p->kstack);
+                
+                release(&ptable.lock);
+                return pid;
+            } 
+        }
+        if (havekids == 0 || thisproc()->killed) {
+            release(&ptable.lock);
+            return -1;
+        } 
+        sleep(thisproc(), &ptable.lock);
+    }
 }
 
 /*
@@ -326,3 +417,55 @@ procdump()
     panic("unimplemented");
 }
 
+int growproc(int n)
+{
+    uint32_t sz;
+
+    sz = thisproc()->sz;
+
+    if(n > 0){
+        if((sz = allocuvm(thisproc()->pgdir, sz, sz + n)) == 0) {
+            return -1;
+        }
+
+    } else if(n < 0){
+        if((sz = deallocuvm(thisproc()->pgdir, sz, sz + n)) == 0) {
+            return -1;
+        }
+    }
+
+    thisproc()->sz = sz;
+    uvm_switch(thisproc());
+
+    return 0;
+}
+
+void user_idle_init()
+{
+    struct proc* p;
+    /* for why our symbols differ from xv6, please refer https://stackoverflow.com/questions/10486116/what-does-this-gcc-error-relocation-truncated-to-fit-mean */
+    extern char _binary_obj_user_initcode_start[], _binary_obj_user_initcode_size[];
+
+    p = proc_alloc();
+
+    if (p == NULL) {
+        panic("user_init: cannot allocate a process");
+    }
+    if ((p->pgdir = pgdir_init()) == NULL) {
+        panic("user_init: cannot allocate a pagetable");
+    }
+
+    initproc = p;
+
+    uvm_init(p->pgdir, _binary_obj_user_initcode_start + (4 << 2), (long)(_binary_obj_user_initcode_size - (4 << 2)));
+
+    // tf
+    memset(p->tf, 0, sizeof(*(p->tf)));
+    p->tf->spsr_el1 = 0;
+    p->tf->sp_el0 = PGSIZE;
+    p->tf->r30 = 0;
+    p->tf->elr_el1 = 0;
+
+    p->state = RUNNABLE;
+    p->sz = PGSIZE;
+}

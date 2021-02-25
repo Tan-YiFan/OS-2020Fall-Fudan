@@ -180,6 +180,13 @@ cprintf(const char* fmt, ...)
     release(&conslock);
 }
 
+void cdebugf(const char* fmt, ...)
+{
+    if (0) {
+        cprintf(fmt);
+    } 
+}
+
 void
 console_intr(int (*getc)())
 {
