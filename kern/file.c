@@ -96,15 +96,15 @@ int
 filestat(struct file *f, struct stat *st)
 {
     /* TODO: Your code here. */
-    acquire(&ftable.lock);
+    // acquire(&ftable.lock);
     if (f->type == FD_INODE) {
         ilock(f->ip);
         stati(f->ip, st);
         iunlock(f->ip);
-        release(&ftable.lock);
+        // release(&ftable.lock);
         return 0;
     } 
-    release(&ftable.lock);
+    // release(&ftable.lock);
     return -1;
 }
 
@@ -113,8 +113,9 @@ ssize_t
 fileread(struct file *f, char *addr, ssize_t n)
 {
     /* TODO: Your code here. */
-    acquire(&ftable.lock);
+    // acquire(&ftable.lock);
     if (f->readable == 0) {
+        // release(&ftable.lock);
         return -1;
     } 
     switch (f->type) {
@@ -130,7 +131,7 @@ fileread(struct file *f, char *addr, ssize_t n)
         } 
         
         iunlock(f->ip);
-        release(&ftable.lock);
+        // release(&ftable.lock);
         return sz;
     default:
         panic("fileread: unsupported file type %d\n", f->type);
@@ -143,9 +144,9 @@ ssize_t
 filewrite(struct file *f, char *addr, ssize_t n)
 {
     /* TODO: Your code here. */
-    acquire(&ftable.lock);
+    // acquire(&ftable.lock);
     if (f->writable == 0) {
-        release(&ftable.lock);
+        // release(&ftable.lock);
         return -1;
     }
     int mx;
@@ -178,7 +179,7 @@ filewrite(struct file *f, char *addr, ssize_t n)
             }
             i += s;
         }
-        release(&ftable.lock);
+        // release(&ftable.lock);
         return i == n ? n : -1;
         break;
     default:

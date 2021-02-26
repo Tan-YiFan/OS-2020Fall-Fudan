@@ -67,6 +67,9 @@ main()
         proc_init();
         user_init();
         user_idle_init();
+        user_idle_init();
+        user_idle_init();
+        user_idle_init();
         // user_init();
         // user_init();
         // user_init();

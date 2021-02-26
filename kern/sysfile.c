@@ -232,7 +232,7 @@ create(char *path, short type, short major, short minor)
     /* TODO: Your code here. */
     uint32_t off;
     struct inode *ip, *dp;
-    char name[DIRSIZ];
+    char name[DIRSIZ] = {0};
 
     if((dp = nameiparent(path, name)) == 0) {
         return 0;

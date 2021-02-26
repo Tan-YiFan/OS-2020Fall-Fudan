@@ -707,8 +707,15 @@ namex(char *path, int nameiparent, char *name)
 {
     struct inode *ip, *next;
 
-    if (*path == '/')
+    if (*path == '/') {
         ip = iget(ROOTDEV, ROOTINO);
+        while (*path == '/') {
+            path++;
+        }
+        if (*path == 0) {
+            return ip;
+        } 
+    }
     else
         ip = idup(thiscpu->proc->cwd);
 
