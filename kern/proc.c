@@ -197,19 +197,14 @@ sched()
 void
 forkret()
 {
-
-    static int first = 1;
     release(&ptable.lock);
     
-
-    if (first) {
-        first = 0;
-
-        initlog(ROOTDEV);
-    } 
     if (thiscpu->proc->pid == 1) {
         // sd_test();
+        initlog(ROOTDEV);
+#ifdef TEST_FILE_SYSTEM
         test_file_system();
+#endif
     }
     // sd_test();
     return;
