@@ -66,7 +66,7 @@ execve(const char *path, char *const argv[], char *const envp[])
     if (!sz) {
         goto bad;
     }
-
+    clearpteu(pgdir, (char*)(sz - (PGSIZE << 1)));
     uint64_t sp = sz;
     /* TODO: Push argument strings.
      *
@@ -122,19 +122,7 @@ execve(const char *path, char *const argv[], char *const envp[])
      *
      */
 
-    // auxv
-    uint64_t auxv[] = { 0, AT_PAGESZ, PGSIZE, AT_NULL };
-    sp -= sizeof(auxv);
-    sp = ROUNDDOWN(sp, 16);
-    if (copyout(pgdir, sp, auxv, sizeof(auxv)) < 0) {
-        goto bad;
-    } 
-    // skip envp
-    sp -= 16;
-    uint64_t temp = 0;
-    if (copyout(pgdir, sp, &temp, 8) < 0) {
-        goto bad;
-    } 
+    
     int argc = 0;
     uint64_t ustack[3 + 32 + 1];
 
@@ -153,10 +141,26 @@ execve(const char *path, char *const argv[], char *const envp[])
     ustack[argc] = 0;
     thisproc()->tf->r0 = argc;
     // thisproc()->tf->r1 = sp = ROUNDDOWN(sp - (argc + 1) * 8, 16);
-    if (((sp - (argc + 1) * 8) & 0xf) == 0) {
+    // auxv
+    if ((argc & 1) == 0) {
+        sp -= 8;
+    } 
+    uint64_t auxv[] = { 0, AT_PAGESZ, PGSIZE, AT_NULL };
+    sp -= sizeof(auxv);
+    // sp = ROUNDDOWN(sp, 16);
+    if (copyout(pgdir, sp, auxv, sizeof(auxv)) < 0) {
+        goto bad;
+    } 
+    // skip envp
+    sp -= 8;
+    uint64_t temp = 0;
+    if (copyout(pgdir, sp, &temp, 8) < 0) {
+        goto bad;
+    } 
+/*     if (argc & 1) {
         argc++;
         ustack[argc] = 0;
-    }
+    } */
     thisproc()->tf->r1 = sp = sp - (argc + 1) * 8;
     if (copyout(pgdir, sp, ustack, (argc + 1) * 8) < 0) {
         goto bad;
@@ -168,10 +172,9 @@ execve(const char *path, char *const argv[], char *const envp[])
     uint64_t* oldpgdir = thisproc()->pgdir;
     thisproc()->pgdir = pgdir;
     thisproc()->sz = sz;
-    sp = ROUNDDOWN(sp, 16);
     thisproc()->tf->sp_el0 = sp;
     thisproc()->tf->elr_el1 = elf.e_entry;
-    
+    // assert((sp & 0xf) == 0);
     uvm_switch(thisproc());
     vm_free(oldpgdir, 1);
     cdebugf("exec return\n");

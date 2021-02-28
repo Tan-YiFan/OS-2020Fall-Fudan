@@ -16,18 +16,14 @@ sys_brk()
 {
     /* TODO: Your code here. */
     uint64_t n;
-
     if(argint(0, &n) < 0) {
         return -1;
     }
-
-    size_t addr = thisproc()->sz;
-
+    size_t sz = thisproc()->sz;
     if(growproc(n) < 0) {
         return -1;
     }
-
-    return addr;
+    return sz;
 }
 
 int

@@ -386,7 +386,7 @@ wait()
                 p->state = UNUSED;
                 p->pid = 0;
                 p->parent = 0;
-                vm_free(p->pgdir, 3);
+                vm_free(p->pgdir, 1);
                 kfree(p->kstack);
                 
                 release(&ptable.lock);
@@ -452,7 +452,7 @@ void user_idle_init()
 
     initproc = p;
 
-    uvm_init(p->pgdir, _binary_obj_user_initcode_start + (4 << 2), (long)(_binary_obj_user_initcode_size - (4 << 2)));
+    uvm_init(p->pgdir, _binary_obj_user_initcode_start + (7 << 2), (long)(_binary_obj_user_initcode_size - (7 << 2)));
 
     // tf
     memset(p->tf, 0, sizeof(*(p->tf)));

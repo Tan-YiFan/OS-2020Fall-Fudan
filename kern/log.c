@@ -81,6 +81,7 @@ install_trans()
 
         memmove(dbuf->data, lbuf->data, BSIZE);
         bwrite(dbuf);
+        bunpin(dbuf);
         brelse(lbuf);
         brelse(dbuf);
     }
@@ -237,8 +238,8 @@ log_write(struct buf *b)
     // memmove(bp->data, b->data, BSIZE);
     // bwrite(bp);
     // brelse(bp);
-    if (i == log.lh.n) {  // Add new block to log?
-        // bpin(b);
+    if (i == log.lh.n) {
+        bpin(b);
         log.lh.n++;
     }
     release(&log.lock);

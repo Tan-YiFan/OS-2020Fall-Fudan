@@ -73,22 +73,19 @@ fileclose(struct file *f)
     
     assert(f->ref == 0);
     
-    struct file f_copy = *f;
+    int is_inode = (f->type == FD_INODE) ? 1 : 0;
+    int is_pipe = (f->type == FD_PIPE) ? 1 : 0;
     f->type = FD_NONE;
+    struct inode* f_inode = f->ip;
     release(&ftable.lock);
     
-    switch (f_copy.type) {
-    // case FD_PIPE:
-    //     break;
-    case FD_INODE:
+    if (is_inode) {
         begin_op();
-        iput(f_copy.ip);
+        iput(f_inode);
         end_op();
-        break;
-    default:
-        panic("fileclose: unsupported file type %d\n", f->type);
+    } else {
+        panic("fileclose: unsupported file type\n");
     }
-    
 }
 
 /* Get metadata about file f. */
@@ -163,7 +160,7 @@ filewrite(struct file *f, char *addr, ssize_t n)
             ilock(f->ip);
             
             ssize_t sz = writei(f->ip, addr + i, f->off, s);
-            if (sz < 0) {
+            if (sz > 0) {
                 f->off += sz;
             } 
             

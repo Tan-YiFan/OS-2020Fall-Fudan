@@ -65,6 +65,7 @@ bget(uint32_t dev, uint32_t blockno)
     for (struct buf* b = bcache.head.next; b != &bcache.head; b = b->next) {
         if (b->dev == dev && b->blockno == blockno) {
             if (!holdingsleep(&b->lock)) {
+                b->refcnt++;
                 acquiresleep(&b->lock);
                 release(&bcache.lock);
                 return b;
@@ -76,17 +77,18 @@ bget(uint32_t dev, uint32_t blockno)
     
     // not hit
     for (struct buf* b = bcache.head.prev; b != &bcache.head; b = b->prev) {
-        if ((!holdingsleep(&b->lock)) && (b->flags & B_DIRTY) == 0) {
+        if ((!holdingsleep(&b->lock)) && (b->flags & B_DIRTY) == 0 && b->refcnt == 0) {
             b->dev = dev;
             b->blockno = blockno;
             acquiresleep(&b->lock);
             b->flags = 0;
+            b->refcnt = 1;
             release(&bcache.lock);
             return b;
         }
     }
 
-    panic("bget: no buffers");
+    panic("bget: no buffers\n");
 }
 
 /* Return a locked buf with the contents of the indicated block. */
@@ -128,12 +130,27 @@ brelse(struct buf *b)
     if (!holdingsleep(&b->lock)) {
         panic("brelse\n");
     } 
-    
-    buf_del(b);
-    buf_add(&bcache.head, b);
-    
     releasesleep(&b->lock);
-    wakeup(b);
+
+    if (--b->refcnt == 0) {
+        buf_del(b);
+        buf_add(&bcache.head, b);
+        wakeup(b);
+    } 
+    
     release(&bcache.lock);
 }
 
+void
+bpin(struct buf *b) {
+    acquire(&bcache.lock);
+    b->refcnt++;
+    release(&bcache.lock);
+}
+
+void
+bunpin(struct buf *b) {
+    acquire(&bcache.lock);
+    b->refcnt--;
+    release(&bcache.lock);
+}

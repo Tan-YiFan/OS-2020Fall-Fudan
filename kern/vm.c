@@ -299,16 +299,10 @@ void clearpteu(uint64_t* pgdir, char* va)
 // Map user virtual address to kernel address.
 char* uva2ka (uint64_t *pgdir, char *uva)
 {
-    uint64_t *pte;
-
-    pte = pgdir_walk(pgdir, uva, 0);
-
-    // make sure it exists
+    uint64_t *pte = pgdir_walk(pgdir, uva, 0);
     if ((*pte & (PTE_PAGE | PTE_P)) == 0) {
         return 0;
     }
-
-    // make sure it is a user page
     if (((*pte & PTE_USER) == 0) || ((*pte & PTE_RO) != 0)) {
         return 0;
     }
@@ -316,30 +310,29 @@ char* uva2ka (uint64_t *pgdir, char *uva)
 }
 int copyout(uint64_t* pgdir, uint32_t va, void* p, uint32_t len)
 {
-    char *buf, *pa0;
-    uint64_t n, va0;
-
-    buf = (char*) p;
-
-    while (len > 0) {
-        va0 = ROUNDDOWN(va, PGSIZE);
-        pa0 = uva2ka(pgdir, (char*) va0);
-
+    char* buf = (char*) p;
+    // first page
+    do
+    {
+        uint64_t va0 = ROUNDDOWN((uint64_t)va, PGSIZE);
+        char* pa0 = uva2ka(pgdir, (char*) va0);
         if (pa0 == 0) {
             return -1;
         }
-
-        n = PGSIZE - (va - va0);
-
-        if (n > len) {
-            n = len;
-        }
-
-        memmove(pa0 + (va - va0), buf, n);
-
+        uint64_t start = (uint64_t)va % PGSIZE;
+        uint32_t n = MIN(len, PGSIZE - start);
+        memcpy(pa0 + start, buf, n);
+        va += n;
         len -= n;
         buf += n;
-        va = va0 + PGSIZE;
+    } while (0);
+    for (uint32_t i = 0; i < len; i += PGSIZE) {
+        char* pa = uva2ka(pgdir, (char*)(va + i));
+        if (pa == 0) {
+            return -1;
+        }
+        uint32_t n = MIN(len - i, PGSIZE);
+        memcpy(pa, buf + i, n);
     }
 
     return 0;

@@ -9,7 +9,7 @@
     if (name() == 0) { \
       cprintf(#name" pass!\n"); \
     } else { \
-      cprintf(#name" fail!\n"); while (1); \
+      cprintf(#name" fail!\n"); \
     } \
   } while (0)
 
@@ -99,6 +99,7 @@ int test_file_write()
             return -1;
         }
         memset(buf, 0, sizeof(buf));
+        f->off = 0;
         fileread(f, buf, strlen(write_text[i]));
         if (strcmp(buf, write_text[i])) {
             return -1;
@@ -143,7 +144,7 @@ test_file_system()
     TEST_FUNC(test_initial_read);
     TEST_FUNC(test_file_write);
     TEST_FUNC(test_mkdir);
-    
+    TEST_FUNC(test_initial_scan);
     TEST_FUNC(test_rmdir);
     do {} while (0);
 }

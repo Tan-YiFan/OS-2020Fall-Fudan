@@ -13,10 +13,12 @@ start:
     svc     0x00
 
 exit:
-    /* mov     x8, #SYS_exit
-    svc     0x00 */
+    mov     x8, #SYS_exit
+    svc     0x00
     b       exit
 
+exit1:
+    b exit1
 # char init[] = "/init\0";
 init:
     .string "/init\0"

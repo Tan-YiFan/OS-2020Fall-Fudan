@@ -237,44 +237,33 @@ create(char *path, short type, short major, short minor)
     if((dp = nameiparent(path, name)) == 0) {
         return 0;
     }
-
     ilock(dp);
-
     if((ip = dirlookup(dp, name, (size_t*)&off)) != 0){
         iunlockput(dp);
         ilock(ip);
-
         if(type == T_FILE && ip->type == T_FILE) {
             return ip;
         }
-
         iunlockput(ip);
-
         return 0;
     }
-
     if((ip = ialloc(dp->dev, type)) == 0) {
         panic("create: ialloc");
     }
-
     ilock(ip);
     ip->major = major;
     ip->minor = minor;
     ip->nlink = 1;
     iupdate(ip);
-
-    if(type == T_DIR){  // Create . and .. entries.
-        dp->nlink++;  // for ".."
+    if(type == T_DIR){ 
+        dp->nlink++;
         iupdate(dp);
-
-        // No ip->nlink++ for ".": avoid cyclic ref count.
         if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0) {
-            panic("create dots");
+            panic(". ..\n");
         }
     }
-
     if(dirlink(dp, name, ip->inum) < 0) {
-        panic("create: dirlink");
+        panic("create: dirlink\n");
     }
 
     iunlockput(dp);
